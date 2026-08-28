@@ -1,0 +1,36 @@
+# Alternative deployment: API on Render, MySQL on Hostinger (see docs/HOSTINGER.md, layout B).
+services:
+  - type: web
+    name: ic2-tabulation-api
+    runtime: node
+    region: singapore
+    plan: starter
+    buildCommand: "npm ci && npm run build"
+    startCommand: "npm start"
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      # Exact frontend origin, no trailing slash (comma-separate several).
+      - key: CORS_ORIGIN
+        value: https://your-frontend.example.com
+      # Hostinger → Remote MySQL host + credentials (set in the Render dashboard, not here).
+      - key: MYSQL_HOST
+        sync: false
+      - key: MYSQL_PORT
+        value: "3306"
+      - key: MYSQL_USER
+        sync: false
+      - key: MYSQL_PASSWORD
+        sync: false
+      - key: MYSQL_DATABASE
+        sync: false
+      - key: MYSQL_SSL
+        value: "false"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 1d

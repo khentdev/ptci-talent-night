@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Lora";
+  src: url("../../../assets/fonts/Lora-Variable.woff2") format("woff2"),
+    url("../../../assets/fonts/Lora-Variable.woff") format("woff");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Lora";
+  src: url("../../../assets/fonts/Lora-VariableItalic.woff2") format("woff2"),
+    url("../../../assets/fonts/Lora-VariableItalic.woff") format("woff");
+  font-weight: 400 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Poppins";
+  src: url("../../../assets/fonts/Poppins-Variable.woff2") format("woff2"),
+    url("../../../assets/fonts/Poppins-Variable.woff") format("woff");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Poppins";
+  src: url("../../../assets/fonts/Poppins-VariableItalic.woff2") format("woff2"),
+    url("../../../assets/fonts/Poppins-VariableItalic.woff") format("woff");
+  font-weight: 400 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@theme {
+  --breakpoint-xs2: 430px;
+  --breakpoint-xs: 375px;
+  --color-primary: #a68c6a;
+  --color-primaryLight: #f0ece6;
+  --font-lora: "Lora", serif;
+  --font-poppins: "Poppins", sans-serif;
+}

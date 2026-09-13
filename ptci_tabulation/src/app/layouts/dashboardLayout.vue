@@ -52,6 +52,10 @@
           label: "Females Overall Score",
           routeName: "overall-score-female",
         },
+        {
+          label: "Top 3 (Male & Female)",
+          routeName: "overall-score-top3",
+        },
       ],
     },
     {

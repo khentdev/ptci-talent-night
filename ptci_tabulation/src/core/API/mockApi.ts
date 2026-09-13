@@ -134,7 +134,6 @@ const loadState = (): MockState => {
 /** Wipes the mock dataset (session, candidates, scores) and reloads. */
 export const resetMockApi = () => {
     localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem("rulesAgreed");
     window.location.reload();
 };
 

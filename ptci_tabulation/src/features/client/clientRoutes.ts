@@ -1,12 +1,4 @@
-import { useAuthStore } from '../auth/store/authStore'
-
 import type { RouteRecordRaw } from 'vue-router'
-
-function requireRulesAgreement() {
-    const authStore = useAuthStore()
-    authStore.initializeRulesAgreement()
-    if (!authStore.rulesAgreed) return { name: "judge-home" }
-}
 
 export const clientRoutes: RouteRecordRaw[] = [
     {
@@ -18,15 +10,13 @@ export const clientRoutes: RouteRecordRaw[] = [
     {
         path: "male-candidates/talent",
         name: "male-candidates-talent",
-        meta: { requiresAuth: true, requiresRulesAgreement: true },
-        beforeEnter: requireRulesAgreement,
+        meta: { requiresAuth: true },
         component: () => import("./male.candidates/Talent.vue")
     },
     {
         path: "female-candidates/talent",
         name: "female-candidates-talent",
-        meta: { requiresAuth: true, requiresRulesAgreement: true },
-        beforeEnter: requireRulesAgreement,
+        meta: { requiresAuth: true },
         component: () => import("./female.candidates/Talent.vue")
     },
 ]

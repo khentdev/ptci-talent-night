@@ -173,10 +173,7 @@ import type {
   GenderOptions,
   UpdateCandidateParams,
 } from "../../types/candidates";
-import {
-  CapitalizeLabel,
-  splitName,
-} from "../../../../utils/capitalizeWord";
+import { CapitalizeLabel, splitName } from "../../../../utils/capitalizeWord";
 
 const { candidateFormErrors, clearFormErrors } = useCandidatesStore();
 onBeforeUnmount(() => {
@@ -188,7 +185,7 @@ const props = defineProps<{
   onClose: () => void;
   isLoading?: boolean;
   onSubmit: (
-    data: any
+    data: any,
   ) => Promise<UpdateCandidateParams | CreateCandidateParams | any>;
   candidateDataToUpdate?: UpdateCandidateParams | null;
 }>();
@@ -224,7 +221,7 @@ watch(
   ([hasData, update]) => {
     if (hasData && update === "update") populateForm(hasData);
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 const teamOptions: CandidateTeamOptions[] = [
@@ -284,7 +281,7 @@ watch(
     if (candidateFormErrors.general) {
       candidateFormErrors.general = "";
     }
-  }
+  },
 );
 
 const validateForm = () => {
@@ -313,14 +310,14 @@ watch(
       .replace(wordsOnly, "")
       .substring(0, 49);
     candidateLastName.value = lastName.replace(wordsOnly, "").substring(0, 49);
-  }
+  },
 );
 
 const candidateFullName = computed(
   () =>
     `${CapitalizeLabel(candidateLastName.value)}, ${CapitalizeLabel(
-      candidateFirstName.value
-    )}`
+      candidateFirstName.value,
+    )}`,
 );
 
 const handleSubmit = async () => {
@@ -333,14 +330,15 @@ const handleSubmit = async () => {
     cand_gender: selectedGender.value!,
   };
 
-  if (props.mode === "update" && props.candidateDataToUpdate) {
-    const updateFormData: UpdateCandidateParams = {
-      cand_id: props.candidateDataToUpdate?.cand_id,
-      ...addFormData,
-    };
-    await props.onSubmit(updateFormData);
-  } else await props.onSubmit(addFormData);
-
-  props.onClose();
+  try {
+    if (props.mode === "update" && props.candidateDataToUpdate) {
+      const updateFormData: UpdateCandidateParams = {
+        cand_id: props.candidateDataToUpdate?.cand_id,
+        ...addFormData,
+      };
+      await props.onSubmit(updateFormData);
+    } else await props.onSubmit(addFormData);
+    props.onClose();
+  } catch {}
 };
 </script>

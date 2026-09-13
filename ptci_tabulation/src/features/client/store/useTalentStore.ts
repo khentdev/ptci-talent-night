@@ -53,7 +53,10 @@ export const useTalentStore = defineStore("talentStore", () => {
         .sort((a, b) => Number(a.cand_number) - Number(b.cand_number)),
     enabled: maleEnabled,
   });
-  const refetchMaleCandidatesTalentFeat = () => getMaleCandidates.refetch();
+  const refetchMaleCandidatesTalentFeat = () => {
+    getMaleCandidates.refetch();
+    getMyMaleTalentScores.refetch();
+  };
 
   const getFemaleCandidates = useQuery({
     queryKey: ["femaleCandidatesDataTalentFeat"],
@@ -68,38 +71,48 @@ export const useTalentStore = defineStore("talentStore", () => {
         .sort((a, b) => Number(a.cand_number) - Number(b.cand_number)),
     enabled: femaleEnabled,
   });
-  const refetchFemaleCandidatesTalentFeat = () => getFemaleCandidates.refetch();
+  const refetchFemaleCandidatesTalentFeat = () => {
+    getFemaleCandidates.refetch();
+    getMyFemaleTalentScores.refetch();
+  };
+
+  const getMyMaleTalentScores = useQuery({
+    queryKey: ["myMaleTalentScores"],
+    queryFn: () => talentService.getMyTalentScores("male"),
+    staleTime: 15 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+    select: (data) => data.data,
+    enabled: maleEnabled,
+  });
+  const refetchMyMaleTalentScores = () => getMyMaleTalentScores.refetch();
+
+  const getMyFemaleTalentScores = useQuery({
+    queryKey: ["myFemaleTalentScores"],
+    queryFn: () => talentService.getMyTalentScores("female"),
+    staleTime: 15 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+    select: (data) => data.data,
+    enabled: femaleEnabled,
+  });
+  const refetchMyFemaleTalentScores = () => getMyFemaleTalentScores.refetch();
 
   const createMaleTalentScoreMutation = useMutation({
-    mutationFn: async (scores: CreateTalentScoreParams[]) => {
-      authStore.setUserMetaDataAfterScoreSubmit(true);
-      const results = await Promise.allSettled(
-        scores.map((c) =>
-          talentService.createTalentScore({
-            cand_id: c.cand_id,
-            mastery: c.mastery,
-            performance_choreography: c.performance_choreography,
-            overall_impression: c.overall_impression,
-            audience_impact: c.audience_impact,
-          }),
-        ),
-      );
-      const failures = results.filter((d) => d.status === "rejected");
-      if (failures.length > 0)
-        throw (failures[0] as PromiseRejectedResult).reason;
-      return results
-        .filter((r) => r.status === "fulfilled")
-        .map((r) => r.value);
-    },
+    mutationFn: (scores: CreateTalentScoreParams[]) =>
+      talentService.createTalentScoreBatch(scores),
     onMutate: async () => {
       const backupScores = structuredClone(toRaw(maleCandidateInputs.value));
       return { backupScores };
     },
-    onSuccess: async () => {
+    onSuccess: async (res) => {
+      authStore.setUserMetaDataAfterScoreSubmit(res.has_submitted);
+      getMyMaleTalentScores.refetch().catch(() => {});
       toast.success("All scores submitted successfully!");
     },
     onError: (err: AxiosError<TalentFeatErrorResponse>, _, context) => {
-      authStore.setUserMetaDataAfterScoreSubmit(false);
       const parsed = appErrorHandler(err);
       const infraMaps = [
         "offline",
@@ -123,25 +136,8 @@ export const useTalentStore = defineStore("talentStore", () => {
     createMaleTalentScoreMutation.mutateAsync(data);
 
   const createFemaleTalentScoreMutation = useMutation({
-    mutationFn: async (scores: CreateTalentScoreParams[]) => {
-      const results = await Promise.allSettled(
-        scores.map((c) =>
-          talentService.createTalentScore({
-            cand_id: c.cand_id,
-            mastery: c.mastery,
-            performance_choreography: c.performance_choreography,
-            overall_impression: c.overall_impression,
-            audience_impact: c.audience_impact,
-          }),
-        ),
-      );
-      const failures = results.filter((d) => d.status === "rejected");
-      if (failures.length > 0)
-        throw (failures[0] as PromiseRejectedResult).reason;
-      return results
-        .filter((r) => r.status === "fulfilled")
-        .map((r) => r.value);
-    },
+    mutationFn: (scores: CreateTalentScoreParams[]) =>
+      talentService.createTalentScoreBatch(scores),
     onMutate: async () => {
       const backupScores = structuredClone(toRaw(femaleCandidateInputs.value));
       femaleCandidateInputs.value.forEach((candidate) => {
@@ -152,7 +148,9 @@ export const useTalentStore = defineStore("talentStore", () => {
       });
       return { backupScores };
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
+      authStore.setUserMetaDataAfterScoreSubmit(res.has_submitted);
+      getMyFemaleTalentScores.refetch().catch(() => {});
       toast.success("Female talent scores submitted successfully!");
     },
     onError: (err: AxiosError<TalentFeatErrorResponse>, _, context) => {
@@ -179,9 +177,12 @@ export const useTalentStore = defineStore("talentStore", () => {
   const femaleError = reactive({ serverError: false, offline: false });
 
   watchEffect(() => {
-    if (getMaleCandidates.isError.value) {
-      const error = getMaleCandidates.error
-        .value as AxiosError<TalentFeatErrorResponse>;
+    const candidatesFailed = getMaleCandidates.isError.value;
+    const myScoresFailed = getMyMaleTalentScores.isError.value;
+    if (candidatesFailed || myScoresFailed) {
+      const error = (candidatesFailed
+        ? getMaleCandidates.error.value
+        : getMyMaleTalentScores.error.value) as AxiosError<TalentFeatErrorResponse>;
       if (error) {
         const { type } = appErrorHandler(error);
         maleError.offline = type === "offline";
@@ -190,16 +191,19 @@ export const useTalentStore = defineStore("talentStore", () => {
           type === "unreachable" ||
           type === "requestTimeout";
       }
-    } else if (getMaleCandidates.isSuccess.value) {
+    } else if (getMaleCandidates.isSuccess.value && getMyMaleTalentScores.isSuccess.value) {
       maleError.offline = false;
       maleError.serverError = false;
     }
   });
 
   watchEffect(() => {
-    if (getFemaleCandidates.isError.value) {
-      const error = getFemaleCandidates.error
-        .value as AxiosError<TalentFeatErrorResponse>;
+    const candidatesFailed = getFemaleCandidates.isError.value;
+    const myScoresFailed = getMyFemaleTalentScores.isError.value;
+    if (candidatesFailed || myScoresFailed) {
+      const error = (candidatesFailed
+        ? getFemaleCandidates.error.value
+        : getMyFemaleTalentScores.error.value) as AxiosError<TalentFeatErrorResponse>;
       if (error) {
         const { type } = appErrorHandler(error);
         femaleError.offline = type === "offline";
@@ -208,7 +212,7 @@ export const useTalentStore = defineStore("talentStore", () => {
           type === "unreachable" ||
           type === "requestTimeout";
       }
-    } else if (getFemaleCandidates.isSuccess.value) {
+    } else if (getFemaleCandidates.isSuccess.value && getMyFemaleTalentScores.isSuccess.value) {
       femaleError.offline = false;
       femaleError.serverError = false;
     }
@@ -219,6 +223,10 @@ export const useTalentStore = defineStore("talentStore", () => {
     refetchFemaleCandidatesTalentFeat,
     getMaleCandidates,
     getFemaleCandidates,
+    getMyMaleTalentScores,
+    getMyFemaleTalentScores,
+    refetchMyMaleTalentScores,
+    refetchMyFemaleTalentScores,
     createMaleTalentScore,
     createFemaleTalentScore,
     createMaleTalentScoreMutation,

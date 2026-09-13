@@ -9,8 +9,9 @@
         <data-loading-state v-else-if="getMaleCandidates.isPending" />
         <template v-else>
           <feature-header :popup-fn="openSevenRules" popup-fn-name="View Top 7 Rules" popup-fn-title="View top 7 rules"
-            :action-fn="openConfirmationModal" :has-icon="true" title="Male Candidate Talent Scores"
-            action-fn-name="Submit" action-fn-title="Submit talent scores for candidates"
+            :action-fn="openConfirmationModal" :has-icon="true" :should-show-action-button="!hasSubmitted"
+            title="Male Candidate Talent Scores" action-fn-name="Submit"
+            action-fn-title="Submit talent scores for candidates"
             description="Provide talent performance scores for each male contestant." />
 
           <talent-candidates-data-table :is-loading="getMaleCandidates.isFetching"
@@ -45,12 +46,15 @@
 
   const {
     getMaleCandidates,
+    getMyMaleTalentScores,
     createMaleTalentScore,
     createMaleTalentScoreMutation,
     refetchMaleCandidatesTalentFeat,
     enableMale,
     maleError,
   } = useTalentStore();
+
+  const hasSubmitted = computed(() => (getMyMaleTalentScores.data?.length ?? 0) > 0);
 
   onMounted(() => {
     enableMale();

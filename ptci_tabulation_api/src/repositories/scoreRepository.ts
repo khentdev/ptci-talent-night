@@ -1,4 +1,5 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2'
+import type { Pool, PoolConnection } from 'mysql2/promise'
 import { getPool } from '../db/pool.js'
 import { CATEGORIES, type CategoryKey } from '../scoring/categories.js'
 import type { Gender, Team } from '../types/index.js'
@@ -20,15 +21,18 @@ export type ScoreInsert = {
   total: number
 }
 
-/** Returns the new score_id, or `'duplicate'` when this judge already scored the candidate. */
-export async function insertScore(input: ScoreInsert): Promise<number | 'duplicate'> {
+/**
+ * Returns the new score_id, or `'duplicate'` when this judge already scored the candidate.
+ * Pass a `PoolConnection` (from `withTransaction`) to make this insert part of a larger transaction.
+ */
+export async function insertScore(input: ScoreInsert, runner: Pool | PoolConnection = getPool()): Promise<number | 'duplicate'> {
   const cat = CATEGORIES[input.category]
   const columns = cat.criteria.map((c) => c.column)
   const sql = `INSERT INTO ${cat.table} (judge_id, cand_id, ${columns.join(', ')}, total_score)
     VALUES (?, ?, ${columns.map(() => '?').join(', ')}, ?)`
   const params = [input.judgeId, input.candId, ...columns.map((col) => input.values[col] ?? 0), input.total]
   try {
-    const [result] = await getPool().execute<ResultSetHeader>(sql, params)
+    const [result] = await runner.execute<ResultSetHeader>(sql, params)
     return result.insertId
   } catch (err) {
     if (isDuplicateKey(err)) return 'duplicate'
@@ -66,6 +70,30 @@ export async function listJudgeScores(category: CategoryKey, gender?: Gender): P
      ${where}
      ORDER BY s.judge_id ASC, c.cand_gender ASC, CAST(c.cand_number AS UNSIGNED) ASC`,
     gender ? [gender] : [],
+  )
+  return rows
+}
+
+/** One judge's own scores in a category (their rows only, one per judge × candidate). */
+export async function listJudgeOwnScores(category: CategoryKey, judgeId: number, gender?: Gender): Promise<JudgeScoreRow[]> {
+  const cat = CATEGORIES[category]
+  const criteria = cat.criteria.map((c) => `s.${c.column}`).join(', ')
+  const conditions = ['s.judge_id = ?']
+  const params: unknown[] = [judgeId]
+  if (gender) {
+    conditions.push('c.cand_gender = ?')
+    params.push(gender)
+  }
+  const [rows] = await getPool().query<JudgeScoreRow[]>(
+    `SELECT s.score_id, s.judge_id, u.username AS judge_name,
+            c.cand_id, c.cand_number, c.cand_name, c.cand_team, c.cand_gender,
+            ${criteria}, s.total_score, s.created_at
+     FROM ${cat.table} s
+     JOIN contestants c ON c.cand_id = s.cand_id
+     JOIN users u ON u.id = s.judge_id
+     WHERE ${conditions.join(' AND ')}
+     ORDER BY c.cand_gender ASC, CAST(c.cand_number AS UNSIGNED) ASC`,
+    params,
   )
   return rows
 }

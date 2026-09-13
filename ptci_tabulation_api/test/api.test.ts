@@ -449,6 +449,59 @@ section('accounts & activity logs')
 }
 
 // =====================================================================
+section('batch score submissions & own scores')
+{
+  const created4 = await call('POST', '/api/users', { cookie: admin, body: { username: 'judge4', password: PASS, role: 'judge' } })
+  const j4 = (await call('POST', '/api/auth/login', { body: { username: 'judge4', password: PASS } })).cookie!
+
+  const mineEmpty = await call('GET', '/api/scores/talent/mine?gender=male', { cookie: j4 })
+  check('mine before any submission → empty array', () => {
+    assert.equal(mineEmpty.status, 200)
+    assert.deepEqual(mineEmpty.body.data, [])
+  })
+
+  const asAdminBatch = await call('POST', '/api/scores/talent/batch', { cookie: admin, body: males.map((c) => maxBody('talent', c.cand_id)) })
+  check('admin cannot submit batch scores → 403', () => assert.equal(asAdminBatch.status, 403))
+
+  const emptyBatch = await call('POST', '/api/scores/talent/batch', { cookie: j4, body: [] })
+  check('empty batch → 422', () => assert.equal(emptyBatch.status, 422))
+
+  const batchWithInternalDup = [...males.map((c) => maxBody('talent', c.cand_id)), maxBody('talent', males[0].cand_id)]
+  const rejected = await call('POST', '/api/scores/talent/batch', { cookie: j4, body: batchWithInternalDup })
+  check('batch with an internal duplicate cand_id → 422', () => assert.equal(rejected.status, 422))
+
+  const mineAfterRejected = await call('GET', '/api/scores/talent/mine?gender=male', { cookie: j4 })
+  check('rejected batch inserted nothing (transaction rolled back)', () => assert.equal(mineAfterRejected.body.data.length, 0))
+  const sessAfterRejected = await call('POST', '/api/auth/check-session', { cookie: j4 })
+  check('has_submitted stays false after a rejected batch', () => assert.equal(sessAfterRejected.body.user.has_submitted, false))
+
+  const cleanBatch = males.map((c) => maxBody('talent', c.cand_id))
+  const ok = await call('POST', '/api/scores/talent/batch', { cookie: j4, body: cleanBatch })
+  check('clean batch → 200, one result per candidate, has_submitted true', () => {
+    assert.equal(ok.status, 200)
+    assert.equal(ok.body.results.length, males.length)
+    assert.ok(ok.body.results.every((r: Json) => r.total_score === '100.00'))
+    assert.equal(ok.body.has_submitted, true)
+  })
+
+  const sessAfterOk = await call('POST', '/api/auth/check-session', { cookie: j4 })
+  check('has_submitted persisted after a successful batch', () => assert.equal(sessAfterOk.body.user.has_submitted, true))
+
+  const mineAfterOk = await call('GET', '/api/scores/talent/mine?gender=male', { cookie: j4 })
+  check("mine → exactly this judge's male rows, matching submitted candidates", () => {
+    assert.equal(mineAfterOk.body.data.length, males.length)
+    assert.deepEqual(new Set(mineAfterOk.body.data.map((r: Json) => r.cand_id)), new Set(males.map((c) => c.cand_id)))
+    assert.ok(mineAfterOk.body.data.every((r: Json) => r.total_score === '100.00'))
+  })
+
+  const mineFemaleEmpty = await call('GET', '/api/scores/talent/mine?gender=female', { cookie: j4 })
+  check('mine ?gender=female → empty (judge4 only scored males)', () => assert.equal(mineFemaleEmpty.body.data.length, 0))
+
+  const rebatch = await call('POST', '/api/scores/talent/batch', { cookie: j4, body: cleanBatch })
+  check('resubmitting the same batch → 422 (duplicate)', () => assert.equal(rebatch.status, 422))
+}
+
+// =====================================================================
 section('logout')
 {
   const out = await app.inject({ method: 'POST', url: '/api/auth/logout', headers: { cookie: `${env.cookie.name}=${admin}`, 'content-type': 'application/json' } })

@@ -1,5 +1,6 @@
 import {
   aggregateByCandidate,
+  listJudgeOwnScores,
   listJudgeScores,
   type CandidateAggregateRow,
   type JudgeScoreRow,
@@ -50,6 +51,13 @@ export async function judgeScoresGrouped(category: CategoryKey, gender?: Gender)
     ;(grouped[dto.judge_id] ??= []).push(dto)
   }
   return grouped
+}
+
+/** One judge's own scores for a category (their rows only), gender-filterable. */
+export async function myJudgeScores(category: CategoryKey, judgeId: number, gender?: Gender): Promise<JudgeScoreDTO[]> {
+  const cat = CATEGORIES[category]
+  const rows = await listJudgeOwnScores(category, judgeId, gender)
+  return rows.map((r) => toJudgeScoreDTO(r, cat.criteria.map((c) => c.column)))
 }
 
 function toJudgeScoreDTO(r: JudgeScoreRow, columns: string[]): JudgeScoreDTO {

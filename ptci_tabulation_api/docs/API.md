@@ -54,7 +54,9 @@ Category keys: `talent`
 
 | Method | Path | Role | Body → Response |
 |--------|------|------|-----------------|
-| POST | `/scores/:category` | judge | `{ cand_id, ...criteria }` → `{ status:200, message, score_id, total_score, has_submitted }` (`has_submitted` is reported, never changed here — only `PUT /auth/has-submitted` sets it) |
+| POST | `/scores/:category` | judge | `{ cand_id, ...criteria }` → `{ status:200, message, score_id, total_score, has_submitted }` (`has_submitted` is reported, never changed here — only `PUT /auth/has-submitted` and the batch endpoint below set it) |
+| POST | `/scores/:category/batch` | judge | `[{ cand_id, ...criteria }, ...]` → `{ status:200, message, results:[{ cand_id, score_id, total_score }], has_submitted:true }` — atomic: every row is inserted and `has_submitted` set in one transaction, or nothing is written |
+| GET | `/scores/:category/mine[?gender=]` | any | → `{ data: JudgeScore[] }` — the current user's own submitted rows |
 | GET | `/scores/:category/judges[?gender=]` | admin | → `{ data: { "<judge_id>": JudgeScore[] } }` |
 | GET | `/scores/:category/final[?gender=]` | admin | → `{ data: CandidateFinal[] }` best first |
 | GET | `/scores/categories` | any | → criteria config |
@@ -87,7 +89,7 @@ Usernames: 3–64 chars, `a-z 0-9 . _ -`, stored lowercase. Passwords: min 8 cha
 ## Activity logs (admin)
 
 `GET /activity-logs[?limit=200]` → `{ data: [{ id, userId, username, action, details, ip, createdAt }] }`
-Actions: `auth.login`, `auth.logout`, `auth.has_submitted`, `score.submit`, `contestant.create|update|delete`, `user.create|reset_password|reset_submission|activate|deactivate|delete`.
+Actions: `auth.login`, `auth.logout`, `auth.has_submitted`, `score.submit`, `score.submit_batch`, `contestant.create|update|delete`, `user.create|reset_password|reset_submission|activate|deactivate|delete`.
 
 ## Health
 

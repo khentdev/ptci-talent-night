@@ -34,25 +34,25 @@
             </td>
 
             <td :class="TABLE_STYLES.TD.no_bold">
-              <input type="text" :disabled="authStore.getUserMetaData?.has_submitted" v-model="c.mastery"
+              <input type="text" :disabled="isCandidateScored(c)" v-model="c.mastery"
                 @input="clampValues(c)" min="0" :max="SCORE_CRITERIA.mastery.max"
                 class="w-20 px-2 py-1 disabled:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded border border-gray-700 hover:border-primary text-center focus:border-primary focus:outline-none transition-colors focus:ring-primary/20 focus:ring-2" />
             </td>
 
             <td :class="TABLE_STYLES.TD.no_bold">
-              <input type="text" :disabled="authStore.getUserMetaData?.has_submitted" v-model="c.performance"
+              <input type="text" :disabled="isCandidateScored(c)" v-model="c.performance"
                 @input="clampValues(c)" min="0" :max="SCORE_CRITERIA.performance.max"
                 class="w-20 px-2 py-1 disabled:bg-gray-200 disabled:opacity-50 rounded border border-gray-700 hover:border-primary text-center focus:border-primary focus:outline-none transition-colors focus:ring-primary/20 focus:ring-2" />
             </td>
 
             <td :class="TABLE_STYLES.TD.no_bold">
-              <input type="text" :disabled="authStore.getUserMetaData?.has_submitted" v-model="c.impression"
+              <input type="text" :disabled="isCandidateScored(c)" v-model="c.impression"
                 @input="clampValues(c)" min="0" :max="SCORE_CRITERIA.impression.max"
                 class="w-20 px-2 py-1 disabled:bg-gray-200 disabled:opacity-50 rounded border border-gray-700 hover:border-primary text-center focus:border-primary focus:outline-none transition-colors focus:ring-primary/20 focus:ring-2" />
             </td>
 
             <td :class="TABLE_STYLES.TD.no_bold">
-              <input type="text" :disabled="authStore.getUserMetaData?.has_submitted" v-model="c.audience"
+              <input type="text" :disabled="isCandidateScored(c)" v-model="c.audience"
                 @input="clampValues(c)" min="0" :max="SCORE_CRITERIA.audience.max"
                 class="w-20 px-2 py-1 disabled:bg-gray-200 disabled:opacity-50 rounded border border-gray-700 hover:border-primary text-center focus:border-primary focus:outline-none transition-colors focus:ring-primary/20 focus:ring-2" />
             </td>
@@ -73,9 +73,6 @@
   import IsEmptyState from "../../../shared/components/reusables/IsEmptyState.vue";
   import FeatureServerState from "../../../shared/components/reusables/FeatureServerState.vue";
   import type { CandidatesDataTalentFeat } from "../../types/talent/types";
-  import { useAuthStore } from "../../../auth/store/authStore";
-
-  const authStore = useAuthStore();
 
   const SCORE_CRITERIA = {
     mastery: { max: 30 },
@@ -103,20 +100,39 @@
     isError?: boolean;
   }>();
 
-  const { getMaleCandidates, getFemaleCandidates } = useTalentStore();
+  const { getMaleCandidates, getFemaleCandidates, getMyMaleTalentScores, getMyFemaleTalentScores } = useTalentStore();
 
   const candidatesQuery = computed(() =>
     props.candidateType === "male" ? getMaleCandidates : getFemaleCandidates
+  );
+
+  const myScoresQuery = computed(() =>
+    props.candidateType === "male" ? getMyMaleTalentScores : getMyFemaleTalentScores
   );
 
   const candidateScoreInputs = useLocalStorage<ScoreFields[]>(props.inputKey, []);
 
   watchEffect(() => {
     const data = candidatesQuery.value?.data || [];
+    const myScores = myScoresQuery.value?.data || [];
     if (data.length) {
       const cachedData = candidateScoreInputs.value || [];
 
       candidateScoreInputs.value = data.map((c: CandidatesDataTalentFeat) => {
+        const submitted = myScores.find((s) => s.cand_id === c.cand_id);
+        if (submitted) {
+          return {
+            candidateId: c.cand_id,
+            candidateNumber: c.cand_number,
+            candidateName: c.cand_name,
+            candidateTeam: CapitalizeLabel(c.cand_team),
+            mastery: submitted.mastery,
+            performance: submitted.performance_choreography,
+            impression: submitted.overall_impression,
+            audience: submitted.audience_impact,
+          };
+        }
+
         const cached = cachedData.find((d) => d.candidateId === c.cand_id);
         return (
           cached ?? {
@@ -133,6 +149,9 @@
       });
     }
   });
+
+  const isCandidateScored = (c: ScoreFields) =>
+    (myScoresQuery.value?.data || []).some((s) => s.cand_id === c.candidateId);
 
   const clampValues = (candidate: ScoreFields) => {
     const sanitize = (value: string) => {

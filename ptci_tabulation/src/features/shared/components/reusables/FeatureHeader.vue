@@ -24,7 +24,7 @@
         <Menu v-if="hasIcon && isMobile" class="size-5 shrink-0" />
       </button>
       <button
-        v-if="actionFn"
+        v-if="actionFn && shouldShowActionButton"
         @click="actionFn"
         :class="[actionFnName ? 'py-2 px-2 md:px-3 space-x-3' : 'size-9']"
         class="inline-flex cursor-pointer items-center justify-center bg-primary font-medium hover:bg-primary/90 text-white rounded-lg transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/30 shadow-sm hover:shadow-md"
@@ -49,6 +49,7 @@ withDefaults(
     description?: string;
     actionFn?: () => void;
     popupFn?: () => void;
+    shouldShowActionButton?: boolean;
     popupFnName?: string;
     popupFnTitle?: string;
     actionFnName?: string;
@@ -56,6 +57,7 @@ withDefaults(
     hasIcon?: boolean;
   }>(),
   {
+    shouldShowActionButton: true,
     title: "Manage your data",
     description: "View and manage all data here.",
     hasIcon: false,

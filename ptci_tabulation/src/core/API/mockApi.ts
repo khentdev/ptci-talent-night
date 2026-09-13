@@ -186,6 +186,58 @@ const submitScore = (category: Category): Handler => ({ state, body }) => {
     return { status: 200, message: "Score submitted successfully.", score_id: Number(row.score_id), total_score: String(total), has_submitted: true };
 };
 
+/** Validates every item before writing anything, so it's all-or-nothing (mirrors the real backend's DB transaction). */
+const submitScoreBatch = (category: Category): Handler => ({ state, body }) => {
+    const user = requireSession(state);
+    const items = body as unknown as Record<string, unknown>[];
+    if (!Array.isArray(items) || !items.length) fail(422, "No scores provided.");
+
+    for (const item of items) {
+        const candId = str(item.cand_id);
+        if (!candidateById(state, candId)) fail(404, "Contestant not found.");
+        if (state.scores[category].some((s) => s.judge_id === user.id && s.cand_id === candId))
+            fail(422, `You have already submitted a score for candidate #${candId}.`);
+    }
+
+    const results = items.map((item) => {
+        const candId = str(item.cand_id);
+        const fields: Record<string, number> = {};
+        for (const f of CATEGORY_FIELDS[category]) fields[f] = num(item[f]);
+        const total = Object.values(fields).reduce((a, b) => a + b, 0);
+        const row: ScoreRow = { score_id: String(state.nextScoreId++), judge_id: user.id, cand_id: candId, fields, total_score: total, created_at: nowIso() };
+        state.scores[category].push(row);
+        return { cand_id: Number(candId), score_id: Number(row.score_id), total_score: String(total) };
+    });
+
+    const updatedUser: UserData = { ...user, has_submitted: true };
+    state.users[user.id] = updatedUser;
+    state.session = updatedUser;
+
+    return { status: 200, message: "Scores submitted successfully.", results, has_submitted: true };
+};
+
+/** This judge's own scores in a category, gender-filtered — mirrors the "/judges" handler's row shape but flat. */
+const myScores = (category: Category): Handler => ({ state, query }) => {
+    const user = requireSession(state);
+    const gender = query.get("gender") ?? "male";
+    const data: unknown[] = [];
+    for (const s of state.scores[category]) {
+        if (s.judge_id !== user.id) continue;
+        const c = candidateById(state, s.cand_id);
+        if (!c || c.cand_gender !== gender) continue;
+        data.push({
+            score_id: s.score_id, cand_id: c.cand_id, cand_number: c.cand_number, cand_name: c.cand_name,
+            cand_team: c.cand_team, cand_gender: c.cand_gender, judge_id: s.judge_id,
+            mastery: String(s.fields.mastery ?? 0),
+            performance_choreography: String(s.fields.performance_choreography ?? 0),
+            overall_impression: String(s.fields.overall_impression ?? 0),
+            audience_impact: String(s.fields.audience_impact ?? 0),
+            total_score: String(s.total_score),
+        });
+    }
+    return { status: 200, message: "Your scores fetched successfully.", data };
+};
+
 const talentTotalsByCandidate = (state: MockState) => {
     const map = new Map<string, number[]>();
     for (const s of state.scores.talent) map.set(s.cand_id, [...(map.get(s.cand_id) ?? []), s.total_score]);
@@ -268,6 +320,8 @@ const handlers: Record<string, Partial<Record<string, Handler>>> = {
     },
 
     "/scores/talent": { POST: submitScore("talent") },
+    "/scores/talent/batch": { POST: submitScoreBatch("talent") },
+    "/scores/talent/mine": { GET: myScores("talent") },
 
     "/scores/talent/judges": {
         GET: ({ state, query }) => {

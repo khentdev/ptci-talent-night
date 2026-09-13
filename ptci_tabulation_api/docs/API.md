@@ -49,7 +49,7 @@ Teams: `red | yellow | green | purple | blue`. Gender: `male | female | other`.
 
 ## Scores
 
-Category keys: `production · uniform · swimwear · formalwear · qna · talent · top-five`
+Category keys: `talent`
 (`GET /scores/categories` returns the criteria and maxima).
 
 | Method | Path | Role | Body → Response |
@@ -57,29 +57,18 @@ Category keys: `production · uniform · swimwear · formalwear · qna · talent
 | POST | `/scores/:category` | judge | `{ cand_id, ...criteria }` → `{ status:200, message, score_id, total_score, has_submitted }` (`has_submitted` is reported, never changed here — only `PUT /auth/has-submitted` sets it) |
 | GET | `/scores/:category/judges[?gender=]` | admin | → `{ data: { "<judge_id>": JudgeScore[] } }` |
 | GET | `/scores/:category/final[?gender=]` | admin | → `{ data: CandidateFinal[] }` best first |
-| GET | `/scores/overall[?gender=]` | admin | → `{ data: Overall[] }` |
-| GET | `/scores/top-five/candidates` | any | → `{ data: Overall[] }` 5 best male + 5 best female |
 | GET | `/scores/categories` | any | → criteria config |
 
 Criteria per category (each value `0..max`, ≤ 2 decimals; strings like `"8.5"` are accepted):
 
 ```
-production : choreography 40, projection 40, audience_impact 20
-uniform    : poise_and_bearings 40, personality_and_projection 30, neatness 20, overall_impact 10
-swimwear   : stage_presence 40, figure_and_fitness 30, poise_and_bearing 20, overall_impact 10
-formalwear : poise_and_bearing 40, "personality/projection" 30, "appropriateness/ellegance" 20, overall_impact 10
-qna        : total_score 100
 talent     : mastery 30, performance_choreography 40, overall_impression 20, audience_impact 10
-top-five   : qna 50, beauty 50
 ```
 
 `JudgeScore = { score_id, judge_id, judge_name, cand_id, cand_number, cand_name, cand_team, cand_gender, <criteria...>, total_score, created_at }`
 
 `CandidateFinal = { score_id, cand_id, cand_number, cand_name, cand_team, cand_gender, <criteria averages...>, total_score, final_score, <category>_final_score, judges_count, created_at, updated_at }`
 — e.g. the talent endpoint includes `talent_final_score` (what `OverallScoreDataTable` reads).
-
-`Overall = { cand_id, cand_number, cand_name, cand_team, cand_gender, total_score, categories_scored, categories: { production, uniform, swimwear, formalwear, qna, talent } }`
-— `total_score` is the sum of the six preliminary averages (max 600).
 
 ## Accounts (admin)
 

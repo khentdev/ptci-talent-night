@@ -70,7 +70,7 @@ const topSevenRules: Rules = [
   },
   {
     boldTitle: "7. Scoring Submission",
-    text: "To maintain fairness in the evaluation process, judges can only submit scores once all candidates have completed the production.",
+    text: "To maintain fairness in the evaluation process, judges can only submit scores once all candidates have completed their performances.",
   },
 ];
 withDefaults(

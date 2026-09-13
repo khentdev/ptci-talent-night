@@ -48,7 +48,8 @@ async function seedSampleContestants(): Promise<number> {
   return n
 }
 
-async function main(): Promise<void> {
+/** Also called by `npm run db:reset -- --seed` (reads the same flags from process.argv). */
+export async function seedDatabase(): Promise<void> {
   await initDatabaseSchema()
 
   // ---- admin ----
@@ -88,10 +89,13 @@ async function main(): Promise<void> {
   }
 }
 
-main()
-  .then(() => closePool())
-  .catch(async (err) => {
-    console.error('Seed failed:', err instanceof Error ? err.message : err)
-    await closePool()
-    process.exit(1)
-  })
+const invokedDirectly = process.argv[1]?.replace(/\\/g, '/').endsWith('/src/db/seed.ts')
+if (invokedDirectly) {
+  seedDatabase()
+    .then(() => closePool())
+    .catch(async (err) => {
+      console.error('Seed failed:', err instanceof Error ? err.message : err)
+      await closePool()
+      process.exit(1)
+    })
+}

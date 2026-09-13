@@ -5,7 +5,7 @@ import { authenticate, requireRole } from '../plugins/auth.js'
 import { CATEGORIES, CATEGORY_KEYS, isCategoryKey, type CategoryKey } from '../scoring/categories.js'
 import { logActivity } from '../services/activityService.js'
 import { genderQuerySchema } from '../services/contestantService.js'
-import { candidateFinals, judgeScoresGrouped, overallStandings, topFiveCandidates } from '../services/scoreboardService.js'
+import { candidateFinals, judgeScoresGrouped } from '../services/scoreboardService.js'
 import { submitScore } from '../services/scoreService.js'
 
 function categoryParam(params: unknown): CategoryKey {
@@ -24,24 +24,9 @@ export const scoreRoutes: FastifyPluginAsync = async (app) => {
     data: CATEGORY_KEYS.map((key) => ({
       key,
       label: CATEGORIES[key].label,
-      preliminary: CATEGORIES[key].preliminary,
       criteria: CATEGORIES[key].criteria.map((c) => ({ key: c.bodyKey, max: c.max })),
     })),
   }))
-
-  // GET /api/scores/top-five/candidates → the 5 best male + 5 best female by preliminary standing
-  //   (judges need this to score the finals; admins to review)
-  app.get('/scores/top-five/candidates', { preHandler: [authenticate] }, async () => {
-    const data = await topFiveCandidates(5)
-    return { status: 200, message: 'Top 5 candidates fetched successfully.', data }
-  })
-
-  // GET /api/scores/overall[?gender=] → every candidate's preliminary standing (admin)
-  app.get('/scores/overall', { preHandler: [requireRole('admin')] }, async (request) => {
-    const { gender } = validate(genderQuerySchema, request.query)
-    const data = await overallStandings(gender)
-    return { status: 200, message: 'Overall standings fetched successfully.', data }
-  })
 
   // POST /api/scores/:category  { cand_id, ...criteria }  (judge)
   //   → 200 { status, message, score_id, total_score, has_submitted }

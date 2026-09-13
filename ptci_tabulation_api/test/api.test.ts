@@ -238,6 +238,8 @@ const scaledBody = (key: string, candId: string, factor: number): Json => {
 
   const unknownCat = await call('POST', '/api/scores/dance', { cookie: j1, body: { cand_id: 1 } })
   check('unknown category → 404', () => assert.equal(unknownCat.status, 404))
+  const removedCat = await call('POST', '/api/scores/production', { cookie: j1, body: { cand_id: 1 } })
+  check('removed pageant category → 404', () => assert.equal(removedCat.status, 404))
 
   const over = await call('POST', '/api/scores/talent', { cookie: j1, body: { ...maxBody('talent', males[0].cand_id), mastery: 31 } })
   check('criterion above max → 422 naming the field', () => {
@@ -265,7 +267,7 @@ const scaledBody = (key: string, candId: string, factor: number): Json => {
     }
     check(`judge1 submits ${key} for all candidates → 200, total_score "100.00"`, () => assert.ok(ok))
   }
-  const dupe = await call('POST', '/api/scores/production', { cookie: j1, body: maxBody('production', males[0].cand_id) })
+  const dupe = await call('POST', '/api/scores/talent', { cookie: j1, body: maxBody('talent', males[0].cand_id) })
   check('duplicate submission → 422', () => {
     assert.equal(dupe.status, 422)
     assert.match(String(dupe.body.message), /already/i)
@@ -336,43 +338,22 @@ section('scoreboards')
   const finalF = await call('GET', '/api/scores/talent/final?gender=female', { cookie: admin })
   check('talent final female → 100.00 from one judge', () => assert.equal(finalF.body.data[0].total_score, '100.00'))
 
-  const uniform = await call('GET', '/api/scores/uniform/final', { cookie: admin })
-  check('uniform final (no gender) → 11 rows with criteria + total', () => {
-    assert.equal(uniform.body.data.length, 11)
-    const m = uniform.body.data.find((r: Json) => r.cand_gender === 'male')
-    assert.equal(m.poise_and_bearings, '30.00')
+  const finalAll = await call('GET', '/api/scores/talent/final', { cookie: admin })
+  check('talent final (no gender) → 11 rows with criteria + total', () => {
+    assert.equal(finalAll.body.data.length, 11)
+    const m = finalAll.body.data.find((r: Json) => r.cand_gender === 'male')
+    assert.equal(m.mastery, '22.50')
     assert.equal(m.total_score, '75.00')
-    assert.equal(m.uniform_final_score, '75.00')
+    assert.equal(m.talent_final_score, '75.00')
   })
 
-  const badGender = await call('GET', '/api/scores/uniform/final?gender=alien', { cookie: admin })
+  const badGender = await call('GET', '/api/scores/talent/final?gender=alien', { cookie: admin })
   check('invalid gender query → 422', () => assert.equal(badGender.status, 422))
 
-  const overall = await call('GET', '/api/scores/overall?gender=male', { cookie: admin })
-  check('overall male → 5 rows, total = sum of 6 category averages (450.00)', () => {
-    assert.equal(overall.body.data.length, 5)
-    const r = overall.body.data[0]
-    assert.equal(r.total_score, '450.00')
-    assert.equal(r.categories_scored, 6)
-    assert.equal(r.categories.talent, '75.00')
-    assert.equal(Object.keys(r.categories).length, 6)
-  })
-
-  const top5 = await call('GET', '/api/scores/top-five/candidates', { cookie: j1 })
-  check('top-five candidates (judge can read) → 5 male + 5 female, best first', () => {
-    assert.equal(top5.status, 200)
-    const m = top5.body.data.filter((r: Json) => r.cand_gender === 'male')
-    const f = top5.body.data.filter((r: Json) => r.cand_gender === 'female')
-    assert.equal(m.length, 5)
-    assert.equal(f.length, 5)
-    assert.equal(f[0].total_score, '600.00')
-    assert.equal(m[0].total_score, '450.00')
-    assert.equal(typeof m[0].cand_id, 'string')
-  })
-
   const cats = await call('GET', '/api/scores/categories', { cookie: j1 })
-  check('categories config → 7 categories, each summing to 100', () => {
-    assert.equal(cats.body.data.length, 7)
+  check('categories config → talent only, summing to 100', () => {
+    assert.equal(cats.body.data.length, 1)
+    assert.equal(cats.body.data[0].key, 'talent')
     for (const c of cats.body.data) assert.equal(c.criteria.reduce((a: number, x: Json) => a + x.max, 0), 100, c.key)
   })
 }

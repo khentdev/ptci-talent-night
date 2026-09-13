@@ -23,7 +23,7 @@ const STORAGE_KEY = "mock-api:v1";
 const MIN_DELAY_MS = 200;
 const MAX_DELAY_MS = 500;
 
-type Category = "production" | "uniform" | "swimwear" | "formalwear" | "qna" | "talent" | "top_5";
+type Category = "talent";
 
 type ScoreRow = {
     score_id: string;
@@ -44,13 +44,7 @@ type MockState = {
 };
 
 const CATEGORY_FIELDS: Record<Category, string[]> = {
-    production: ["choreography", "projection", "audience_impact"],
-    uniform: ["poise_and_bearings", "personality_and_projection", "neatness", "overall_impact"],
-    swimwear: ["stage_presence", "figure_and_fitness", "poise_and_bearing", "overall_impact"],
-    formalwear: ["poise_and_bearing", "personality/projection", "appropriateness/ellegance", "overall_impact"],
-    qna: ["total_score"],
     talent: ["mastery", "performance_choreography", "overall_impression", "audience_impact"],
-    top_5: ["qna", "beauty"],
 };
 
 const SEED_JUDGE_IDS = ["1", "2", "3"];
@@ -111,16 +105,13 @@ const seedScores = (candidates: CandidatesData[], category: Category, startId: n
 
 const buildInitialState = (): MockState => {
     const candidates = buildCandidates();
-    // Seed admin-side scoreboards with three fake judges; leave the other
-    // categories empty so the judge forms can be exercised from scratch.
+    // Seed admin-side scoreboards with three fake judges.
     const talent = seedScores(candidates, "talent", 1);
-    const uniform = seedScores(candidates, "uniform", 1000);
-    const top5 = seedScores(candidates, "top_5", 2000);
     return {
         session: null,
         users: {},
         candidates,
-        scores: { production: [], uniform, swimwear: [], formalwear: [], qna: [], talent, top_5: top5 },
+        scores: { talent },
         nextCandId: candidates.length + 1,
         nextScoreId: 5000,
     };
@@ -277,35 +268,8 @@ const handlers: Record<string, Partial<Record<string, Handler>>> = {
         },
     },
 
-    "/scores/production": { POST: submitScore("production") },
-    "/scores/uniform": { POST: submitScore("uniform") },
-    "/scores/swimwear": { POST: submitScore("swimwear") },
-    "/scores/formalwear": { POST: submitScore("formalwear") },
-    "/scores/qna": { POST: submitScore("qna") },
     "/scores/talent": { POST: submitScore("talent") },
-    "/scores/top-five": { POST: submitScore("top_5") },
 
-    "/scores/uniform/final": {
-        GET: ({ state }) => {
-            requireSession(state);
-            const data = state.candidates.flatMap((c) => {
-                const rows = state.scores.uniform.filter((s) => s.cand_id === c.cand_id);
-                if (!rows.length) return [];
-                const f = (k: string) => String(round2(avg(rows.map((r) => r.fields[k] ?? 0))));
-                return [{
-                    score_id: rows[0]!.score_id,
-                    cand_id: c.cand_id, cand_number: c.cand_number, cand_name: c.cand_name,
-                    cand_team: c.cand_team, cand_gender: c.cand_gender,
-                    poise_and_bearings: f("poise_and_bearings"),
-                    personality_and_projection: f("personality_and_projection"),
-                    neatness: f("neatness"),
-                    overall_impact: f("overall_impact"),
-                    total_score: String(round2(avg(rows.map((r) => r.total_score)))),
-                }];
-            });
-            return { stats: 200, status: 200, message: "Uniform scores fetched successfully.", data };
-        },
-    },
     "/scores/talent/judges": {
         GET: ({ state, query }) => {
             requireSession(state);
@@ -342,22 +306,6 @@ const handlers: Record<string, Partial<Record<string, Handler>>> = {
                 }))
                 .sort((a, b) => Number(b.talent_final_score) - Number(a.talent_final_score));
             return { status: 200, message: "Talent final scores fetched successfully.", data };
-        },
-    },
-    "/scores/top-five/candidates": {
-        GET: ({ state }) => {
-            requireSession(state);
-            const totals = talentTotalsByCandidate(state);
-            const topFor = (gender: GenderOptions) => state.candidates
-                .filter((c) => c.cand_gender === gender)
-                .map((c) => ({
-                    cand_id: c.cand_id, cand_number: c.cand_number, cand_name: c.cand_name,
-                    cand_team: c.cand_team, cand_gender: c.cand_gender,
-                    total_score: String(round2(avg(totals.get(c.cand_id) ?? [0]))),
-                }))
-                .sort((a, b) => Number(b.total_score) - Number(a.total_score))
-                .slice(0, 5);
-            return { status: 200, message: "Top 5 candidates fetched successfully.", data: [...topFor("male"), ...topFor("female")] };
         },
     },
 };

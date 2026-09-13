@@ -1,6 +1,6 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2'
 import { getPool } from '../db/pool.js'
-import { CATEGORIES, PRELIMINARY_CATEGORIES, type CategoryKey } from '../scoring/categories.js'
+import { CATEGORIES, type CategoryKey } from '../scoring/categories.js'
 import type { Gender, Team } from '../types/index.js'
 
 /*
@@ -102,51 +102,6 @@ export async function aggregateByCandidate(category: CategoryKey, gender?: Gende
      ${where}
      GROUP BY c.cand_id, c.cand_number, c.cand_name, c.cand_team, c.cand_gender
      ORDER BY total_score DESC, c.cand_gender ASC, CAST(c.cand_number AS UNSIGNED) ASC`,
-    gender ? [gender] : [],
-  )
-  return rows
-}
-
-export interface OverallRow extends RowDataPacket {
-  cand_id: number
-  cand_number: string
-  cand_name: string
-  cand_team: Team
-  cand_gender: Gender
-  total_score: string
-  categories_scored: number
-  // one column per preliminary category key holding that category's average (or null)
-  [category: string]: unknown
-}
-
-/**
- * Preliminary standing per candidate: the sum of each preliminary category's
- * judge-averaged total (max 100 each). Used to pick the Top 5 finalists.
- */
-export async function overallByCandidate(gender?: Gender, limit?: number): Promise<OverallRow[]> {
-  const aliases = PRELIMINARY_CATEGORIES.map((cat) => ({ cat, alias: `a_${cat.table}` }))
-  const selectAvgs = aliases.map(({ cat, alias }) => `${alias}.avg_total AS \`${cat.key}\``).join(', ')
-  const sumExpr = aliases.map(({ alias }) => `COALESCE(${alias}.avg_total, 0)`).join(' + ')
-  const scoredExpr = aliases.map(({ alias }) => `(${alias}.avg_total IS NOT NULL)`).join(' + ')
-  const joins = aliases
-    .map(
-      ({ cat, alias }) =>
-        `LEFT JOIN (SELECT cand_id, ROUND(AVG(total_score), 2) AS avg_total FROM ${cat.table} GROUP BY cand_id) ${alias}
-           ON ${alias}.cand_id = c.cand_id`,
-    )
-    .join('\n')
-  const where = gender ? 'WHERE c.cand_gender = ?' : ''
-  const limitClause = limit ? `LIMIT ${Math.max(1, Math.trunc(limit))}` : ''
-  const [rows] = await getPool().query<OverallRow[]>(
-    `SELECT c.cand_id, c.cand_number, c.cand_name, c.cand_team, c.cand_gender,
-            ${selectAvgs},
-            ROUND(${sumExpr}, 2) AS total_score,
-            (${scoredExpr}) AS categories_scored
-     FROM contestants c
-     ${joins}
-     ${where}
-     ORDER BY total_score DESC, CAST(c.cand_number AS UNSIGNED) ASC
-     ${limitClause}`,
     gender ? [gender] : [],
   )
   return rows

@@ -81,7 +81,7 @@
               class="text-xl font-bold text-center text-gray-800 font-poppins md:mt-3 md:text-2xl"
             >
               Welcome to the Official
-              <span class="text-primary">Ms & Mr. PTCI Pageant</span> Tabulation
+              <span class="text-primary">PTCI Talent Night</span> Tabulation
               System
             </h2>
 

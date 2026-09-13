@@ -24,7 +24,7 @@
               action-fn-name="Add Candidate"
               title="Manage Candidates"
               action-fn-title="Add new candidate"
-              description="View and manage all pageant candidates"
+              description="View and manage all Talent Night candidates"
             />
             <CandidateDataTable />
           </div>

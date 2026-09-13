@@ -14,7 +14,7 @@
         </h1>
         <p class="text-gray-600 text-sm sm:text-base font-poppins">
           You're logged in as a
-          <span class="font-semibold text-primary">Judge</span> for the pageant
+          <span class="font-semibold text-primary">Judge</span> for the Talent Night
           evaluation.
         </p>
       </header>
@@ -136,7 +136,7 @@
           <button
             @click="
               () => {
-                router.push({ name: 'male-candidates-production' });
+                router.push({ name: 'male-candidates-talent' });
               }
             "
             class="group cursor-pointer bg-primary disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-5 md:px-10 py-4 rounded-xl font-semibold font-poppins transition-all duration-300 transform hover:scale-105 hover:shadow-xl hover:shadow-primary/30 disabled:hover:scale-100 disabled:hover:shadow-none focus:outline-none focus:ring-4 focus:ring-primary/20"

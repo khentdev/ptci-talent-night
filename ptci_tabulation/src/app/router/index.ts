@@ -4,7 +4,6 @@ import { useAuthStore } from '../../features/auth/store/authStore';
 import { authRoutes } from '../../features/auth/authRoutes';
 import { homeRoutes, dashboardOverviewRoutes } from '../../features/dashboard/dashboardRoutes';
 import { talentRoutes } from '../../features/talent/talentRoutes';
-import { categoryRoutes } from '../../features/category/categoryRoutes';
 import { settingsRoutes } from '../../features/settings/settingsRoutes';
 import { clientRoutes } from '../../features/client/clientRoutes';
 
@@ -45,7 +44,6 @@ const routes: RouteRecordRaw[] = [
         children: [
             ...dashboardOverviewRoutes,
             ...talentRoutes,
-            ...categoryRoutes,
             ...settingsRoutes,
             {
                 path: ":pathMatch(.*)*",

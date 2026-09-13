@@ -1,23 +1,18 @@
 import { defineStore } from "pinia";
 import { overallTalentScoreService } from "../services/overallTalentScoreService";
 import { useQuery } from "@tanstack/vue-query";
-import { ref, watchEffect } from "vue";
-import { useLoadingStore } from "../../../shared/store/useLoadingState";
-import { useGlobalErrorSetter } from "../../../shared/store/useGlobalErrorState";
+import { reactive, readonly, ref, watchEffect } from "vue";
 import type { AxiosError } from "axios";
 import type { OverallTalentScoreErrorResponse } from "../types/overallTalentScore/types";
 import { appErrorHandler } from "../../errors/appErrorHandler";
-export const useOverallTalentScore = defineStore("talentStore", () => {
-
-    const { setLoading } = useLoadingStore()
-    const { setError } = useGlobalErrorSetter()
+export const useOverallTalentScore = defineStore("overallTalentScore", () => {
 
     const maleEnabled = ref(false)
     const getOverallScoreMale = useQuery({
         queryKey: ["overallScoreMale"],
         queryFn: () => overallTalentScoreService.getOverallScoreMale(),
         staleTime: 15 * 60 * 1000,
-        gcTime: 60 * 60 * 1000,
+        gcTime: 15 * 60 * 1000,
         retry: 3,
         retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
         select: (data) => data.data,
@@ -30,8 +25,8 @@ export const useOverallTalentScore = defineStore("talentStore", () => {
     const getOverallScoreFemale = useQuery({
         queryKey: ["overallScoreFemale"],
         queryFn: () => overallTalentScoreService.getOverallScoreFemale(),
-        staleTime: 15 * 60 * 1000,
-        gcTime: 60 * 60 * 1000,
+        staleTime: 5 * 60 * 1000,
+        gcTime: 5 * 60 * 1000,
         retry: 3,
         retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
         select: (data) => data.data,
@@ -39,38 +34,34 @@ export const useOverallTalentScore = defineStore("talentStore", () => {
     })
     const refetchOverallScoreFemale = () => { getOverallScoreFemale.refetch() }
 
-
-
-
-    watchEffect(() => {
-        setLoading("overallTalentScoreMale", "initialFetch", getOverallScoreMale.isPending.value || getOverallScoreMale.isLoading.value)
-        setLoading("overallTalentScoreMale", "fetchRefresh", getOverallScoreMale.isPending.value)
-
-        setLoading("overallTalentScoreFemale", "initialFetch", getOverallScoreFemale.isPending.value || getOverallScoreFemale.isLoading.value)
-        setLoading("overallTalentScoreFemale", "fetchRefresh", getOverallScoreFemale.isPending.value)
-    })
-
+    const maleError = reactive({ serverError: false, offline: false })
+    const femaleError = reactive({ serverError: false, offline: false })
 
     watchEffect(() => {
         if (getOverallScoreMale.isError.value) {
             const error = getOverallScoreMale.error.value as AxiosError<OverallTalentScoreErrorResponse>
             if (error) {
                 const { type } = appErrorHandler(error)
-                if (type === "offline") { setError("overallScoreMale", "fetchOffline", true) }
-                if (type === "serverError" || type === "unreachable" || type === "requestTimeout") {
-                    setError("overallScoreMale", "fetchServerError", true)
-                }
+                maleError.offline = type === "offline"
+                maleError.serverError = type === "serverError" || type === "unreachable" || type === "requestTimeout"
             }
+        } else if (getOverallScoreMale.data.value) {
+            maleError.offline = false
+            maleError.serverError = false
         }
+    })
+
+    watchEffect(() => {
         if (getOverallScoreFemale.isError.value) {
-            const error = getOverallScoreMale.error.value as AxiosError<OverallTalentScoreErrorResponse>
+            const error = getOverallScoreFemale.error.value as AxiosError<OverallTalentScoreErrorResponse>
             if (error) {
                 const { type } = appErrorHandler(error)
-                if (type === "offline") { setError("overallScoreFemale", "fetchOffline", true) }
-                if (type === "serverError" || type === "unreachable" || type === "requestTimeout") {
-                    setError("overallScoreFemale", "fetchServerError", true)
-                }
+                femaleError.offline = type === "offline"
+                femaleError.serverError = type === "serverError" || type === "unreachable" || type === "requestTimeout"
             }
+        } else if (getOverallScoreFemale.data.value) {
+            femaleError.offline = false
+            femaleError.serverError = false
         }
     })
 
@@ -78,7 +69,9 @@ export const useOverallTalentScore = defineStore("talentStore", () => {
         getOverallScoreMale, getOverallScoreFemale,
         enableMale: () => { maleEnabled.value = true },
         enableFemale: () => { femaleEnabled.value = true },
-        refetchOverallScoreMale, refetchOverallScoreFemale
+        refetchOverallScoreMale, refetchOverallScoreFemale,
+        maleError: readonly(maleError),
+        femaleError: readonly(femaleError)
     }
 
 })

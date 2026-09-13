@@ -46,7 +46,7 @@ export const useJudgesScores = defineStore("judgesScore", () => {
                 maleError.offline = type === "offline"
                 maleError.serverError = type === "serverError" || type === "unreachable" || type === "requestTimeout"
             }
-        } else if (judgesTalentScoresMales.data.value) {
+        } else if (judgesTalentScoresMales.isSuccess.value) {
             maleError.offline = false
             maleError.serverError = false
         }
@@ -60,7 +60,7 @@ export const useJudgesScores = defineStore("judgesScore", () => {
                 femaleError.offline = type === "offline"
                 femaleError.serverError = type === "serverError" || type === "unreachable" || type === "requestTimeout"
             }
-        } else if (judgesTalentScoresFemales.data.value) {
+        } else if (judgesTalentScoresFemales.isSuccess.value) {
             femaleError.offline = false
             femaleError.serverError = false
         }

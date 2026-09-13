@@ -1,7 +1,7 @@
 <template>
   <FeatureBaseTable>
     <template #table>
-      <FeatureServerState v-if="getError['candidates:fetchServerError']" :on-retry="refetchCandidates"
+      <FeatureServerState v-if="fetchError.serverError" :on-retry="refetchCandidates"
         title="Couldn't load candidates"
         message="There was an issue retrieving candidate data. Please check your connection and try again." />
       <IsEmptyState v-else-if="!getCandidates.data?.data?.length" />
@@ -71,7 +71,7 @@
   </FeatureBaseTable>
   <FeatureBaseForm title="Update Candidate" description="Provide complete candidate details" :show-form="showForm">
     <CandidateForm :candidate-data-to-update="candidateDataToUpdate" :on-submit="updateCandidate"
-      :is-loading="useLoading['candidates:updateCandidate']" mode="update" :on-close="() => (showForm = false)" />
+      :is-loading="updateCandidateMutation.isPending" mode="update" :on-close="() => (showForm = false)" />
   </FeatureBaseForm>
   <DeleteConfirmationModal :datas="dataToDelete" title="Delete Candidate"
     description="Are you sure you want to delete this candidate?" :on-close="() => (showConfirmation = false)"
@@ -96,13 +96,9 @@
     FormatFullName,
   } from "../../../../utils/capitalizeWord";
   import FeatureServerState from "../../../shared/components/reusables/FeatureServerState.vue";
-  import { useGlobalErrorSetter } from "../../../../shared/store/useGlobalErrorState";
   import { ref } from "vue";
-  import { useLoadingStore } from "../../../../shared/store/useLoadingState";
 
-  const { getError } = useGlobalErrorSetter();
-  const { useLoading } = useLoadingStore();
-  const { getCandidates, updateCandidate, deleteCandidate, refetchCandidates } =
+  const { getCandidates, updateCandidate, updateCandidateMutation, deleteCandidate, refetchCandidates, fetchError } =
     useCandidatesStore();
 
   const formatDateAndTime = (date: string): string => {

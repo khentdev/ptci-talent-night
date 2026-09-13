@@ -1,21 +1,18 @@
 import { defineStore } from 'pinia';
-import { reactive, watchEffect } from 'vue';
+import { reactive, readonly, watchEffect } from 'vue';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 
-import { useLoadingStore } from '../../../shared/store/useLoadingState';
 import { appErrorHandler } from '../../errors/appErrorHandler';
 import { useToast } from '../../shared/composables/useToast';
 import { candidatesService } from '../services/candidatesService';
 
 import type { AxiosError } from 'axios';
 import type { CandidateErrorResponse, CandidateFormErrors, CreateCandidateParams, DeleteCandidateParams, GetCandidatesDTO, UpdateCandidateParams } from '../types/candidates';
-import { useGlobalErrorSetter } from '../../../shared/store/useGlobalErrorState';
 export const useCandidatesStore = defineStore("candidateStore", () => {
 
     const { toast } = useToast()
     const queryClient = useQueryClient()
-    const { setError } = useGlobalErrorSetter()
 
     const candidateFormErrors = reactive<CandidateFormErrors>({
         general: ""
@@ -23,7 +20,6 @@ export const useCandidatesStore = defineStore("candidateStore", () => {
 
     const clearFormErrors = () => Object.keys(candidateFormErrors).forEach(key => candidateFormErrors[key as keyof typeof candidateFormErrors] = "")
 
-    const { setLoading } = useLoadingStore()
     const getCandidates = useQuery({
         queryKey: ["candidatesData"],
         queryFn: () => candidatesService.getCandidates(),
@@ -114,34 +110,25 @@ export const useCandidatesStore = defineStore("candidateStore", () => {
 
     const deleteCandidate = ({ id }: DeleteCandidateParams) => deleteCandidateMutation.mutate({ id })
 
-    watchEffect(() => {
-        setLoading("candidates", "initialFetching", getCandidates.isPending.value || getCandidates.isLoading.value)
-        setLoading("candidates", "fetchRefresh", getCandidates.isFetching.value)
-
-        setLoading("candidates", "createCandidate", addCandidateMutation.isPending.value)
-        setLoading("candidates", "updateCandidate", updateCandidateMutation.isPending.value)
-        setLoading("candidate", "deleteCandidate", deleteCandidateMutation.isPending.value)
-
-        if (getCandidates.data.value) {
-            setError("candidates", "fetchOffline", false)
-            setError("candidates", "fetchServerError", false)
-        }
-    })
+    const fetchError = reactive({ serverError: false, offline: false })
 
     watchEffect(() => {
-        if (getCandidates.isError) {
+        if (getCandidates.isError.value) {
             const error = getCandidates.error.value as AxiosError<CandidateErrorResponse>
             if (error) {
-                const { type, } = appErrorHandler(error)
-                if (type === "offline") { setError("candidates", "fetchOffline", true) }
-                if (type === "serverError" || type === "unreachable" || type === "requestTimeout") {
-                    setError("candidates", "fetchServerError", true)
-                }
+                const { type } = appErrorHandler(error)
+                fetchError.offline = type === "offline"
+                fetchError.serverError = type === "serverError" || type === "unreachable" || type === "requestTimeout"
             }
+        } else if (getCandidates.isSuccess.value) {
+            fetchError.offline = false
+            fetchError.serverError = false
         }
-
     })
 
-
-    return { candidateFormErrors, clearFormErrors, getCandidates, addCandidate, updateCandidate, deleteCandidate, refetchCandidates }
+    return {
+        candidateFormErrors, clearFormErrors, getCandidates, addCandidate, updateCandidate, deleteCandidate, refetchCandidates,
+        addCandidateMutation, updateCandidateMutation, deleteCandidateMutation,
+        fetchError: readonly(fetchError)
+    }
 })

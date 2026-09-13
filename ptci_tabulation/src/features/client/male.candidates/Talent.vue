@@ -2,19 +2,19 @@
   <section class="min-h-screen p-3 overflow-x-auto flex flex-col items-center justify-center">
     <div class="w-full max-w-full mt-16 md:mt-12 rounded-2xl" :class="{
       'border border-gray-200':
-        !useLoading['talentCandidates:maleInitialFetching'],
+        !getMaleCandidates.isPending,
     }">
       <div class="overflow-hidden rounded-2xl">
-        <feature-offline-state v-if="getError['talentCandidates:maleFetchOffline'] || offline" />
-        <data-loading-state v-else-if="useLoading['talentCandidates:maleInitialFetching']" />
+        <feature-offline-state v-if="maleError.offline || offline" />
+        <data-loading-state v-else-if="getMaleCandidates.isPending" />
         <template v-else>
           <feature-header :popup-fn="openSevenRules" popup-fn-name="View Top 7 Rules" popup-fn-title="View top 7 rules"
             :action-fn="openConfirmationModal" :has-icon="true" title="Male Candidate Talent Scores"
             action-fn-name="Submit" action-fn-title="Submit talent scores for candidates"
             description="Provide talent performance scores for each male contestant." />
 
-          <talent-candidates-data-table :is-loading="useLoading['talentCandidates:maleFetchRefresh']"
-            :is-error="getError['talentCandidates:maleFetchServerError']" :retry-fn="refetchMaleCandidatesTalentFeat"
+          <talent-candidates-data-table :is-loading="getMaleCandidates.isFetching"
+            :is-error="maleError.serverError" :retry-fn="refetchMaleCandidatesTalentFeat"
             candidate-type="male" input-key="male-talent-scores" ref="talentCandidatesDataTableRef" />
         </template>
       </div>
@@ -24,7 +24,7 @@
   <ConfirmationModal :show="isConfirmationShown" :action-fn="handleSubmitScores" action-fn-name="Submit"
     title="Submit Talent Scores for Candidates"
     description="Once submitted, these scores will be locked and cannot be changed. Please review all fields carefully before confirming."
-    :close="() => (isConfirmationShown = false)" :is-loading="useLoading['talentCandidates:createMaleTalentScore']" />
+    :close="() => (isConfirmationShown = false)" :is-loading="createMaleTalentScoreMutation.isPending" />
   <top-seven-rules :is-dark-bg="true" :is-open="isSevenRulesOpen" :close="() => (isSevenRulesOpen = false)" />
 </template>
 
@@ -39,16 +39,18 @@
   import { useTalentStore } from "../store/useTalentStore";
   import { useNetworkCheck } from "../../../shared/composables/useNetworkStatus";
   import { computed, onMounted, ref } from "vue";
-  import { useLoadingStore } from "../../../shared/store/useLoadingState";
-  import { useGlobalErrorSetter } from "../../../shared/store/useGlobalErrorState";
 
   const { isOnline } = useNetworkCheck();
   const offline = computed(() => !isOnline.value);
 
-  const { getError } = useGlobalErrorSetter();
-  const { useLoading } = useLoadingStore();
-  const { createMaleTalentScore, refetchMaleCandidatesTalentFeat, enableMale } =
-    useTalentStore();
+  const {
+    getMaleCandidates,
+    createMaleTalentScore,
+    createMaleTalentScoreMutation,
+    refetchMaleCandidatesTalentFeat,
+    enableMale,
+    maleError,
+  } = useTalentStore();
 
   onMounted(() => {
     enableMale();
@@ -72,8 +74,8 @@
   const isConfirmationShown = ref(false);
   const openConfirmationModal = () => {
     if (
-      getError["talentCandidates:maleFetchOffline"] ||
-      getError["talentCandidates:maleFetchServerError"] ||
+      maleError.offline ||
+      maleError.serverError ||
       offline.value
     )
       return;

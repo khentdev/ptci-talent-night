@@ -45,7 +45,7 @@ export const useOverallTalentScore = defineStore("overallTalentScore", () => {
                 maleError.offline = type === "offline"
                 maleError.serverError = type === "serverError" || type === "unreachable" || type === "requestTimeout"
             }
-        } else if (getOverallScoreMale.data.value) {
+        } else if (getOverallScoreMale.isSuccess.value) {
             maleError.offline = false
             maleError.serverError = false
         }
@@ -59,7 +59,7 @@ export const useOverallTalentScore = defineStore("overallTalentScore", () => {
                 femaleError.offline = type === "offline"
                 femaleError.serverError = type === "serverError" || type === "unreachable" || type === "requestTimeout"
             }
-        } else if (getOverallScoreFemale.data.value) {
+        } else if (getOverallScoreFemale.isSuccess.value) {
             femaleError.offline = false
             femaleError.serverError = false
         }

@@ -221,11 +221,11 @@
   const getFormattedTeamLabel = (team: Capitalize<CandidateTeamOptions>) => {
     const teamLower = team.toLowerCase();
     return {
-      red: "Red Avengers",
-      yellow: "Yellow Predators",
-      green: "Green Warriors",
-      purple: "Purple Gladiators",
-      blue: "Blue Raptors",
+      black: "Black Stallion",
+      white: "White Wolves",
+      purple: "Purple Hawk",
+      green: "Green Dragon",
+      red: "Red Vipers",
     }[teamLower];
   };
 
@@ -234,11 +234,11 @@
       const teamLabel = getFormattedTeamLabel(team);
       return teamLabel
         ? {
-          "Red Avengers": "bg-red-400 text-white",
-          "Yellow Predators": "bg-yellow-400 text-gray-800",
-          "Green Warriors": "bg-green-400 text-gray-800",
-          "Purple Gladiators": "bg-purple-400 text-white",
-          "Blue Raptors": "bg-blue-400 text-white",
+          "Black Stallion": "bg-gray-900 text-white",
+          "White Wolves": "bg-white text-gray-800 ring-1 ring-gray-300",
+          "Purple Hawk": "bg-purple-400 text-white",
+          "Green Dragon": "bg-green-400 text-gray-800",
+          "Red Vipers": "bg-red-400 text-white",
         }[teamLabel]
         : "";
     }

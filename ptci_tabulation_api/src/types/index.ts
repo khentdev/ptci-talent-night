@@ -30,10 +30,10 @@ export type AuthUser = {
 }
 
 export type Gender = 'male' | 'female' | 'other'
-export type Team = 'red' | 'yellow' | 'green' | 'purple' | 'blue'
+export type Team = 'black' | 'white' | 'purple' | 'green' | 'red'
 
 export const GENDERS: readonly Gender[] = ['male', 'female', 'other']
-export const TEAMS: readonly Team[] = ['red', 'yellow', 'green', 'purple', 'blue']
+export const TEAMS: readonly Team[] = ['black', 'white', 'purple', 'green', 'red']
 
 /** Row in `contestants`. */
 export type ContestantRecord = {

@@ -171,7 +171,7 @@ section('contestants')
   const anon = await call('GET', '/api/contestants')
   check('anonymous list → 401', () => assert.equal(anon.status, 401))
 
-  const teams = ['red', 'yellow', 'green', 'purple', 'blue']
+  const teams = ['black', 'white', 'purple', 'green', 'red']
   for (let i = 1; i <= 6; i++) {
     const m = await call('POST', '/api/contestants', { cookie: admin, body: { cand_number: String(i), cand_name: `Male ${i}`, cand_team: teams[i % 5], cand_gender: 'male' } })
     const f = await call('POST', '/api/contestants', { cookie: admin, body: { cand_number: String(i), cand_name: `Female ${i}`, cand_team: teams[i % 5], cand_gender: 'female' } })
@@ -198,13 +198,13 @@ section('contestants')
   check('list ?gender=female → 6', () => assert.equal(females.body.data.length, 6))
 
   const target = list.body.data.find((c: Json) => c.cand_name === 'Male 6')
-  const upd = await call('PUT', `/api/contestants/${target.cand_id}`, { cookie: admin, body: { cand_number: '6', cand_name: 'Male Six', cand_team: 'blue', cand_gender: 'male' } })
+  const upd = await call('PUT', `/api/contestants/${target.cand_id}`, { cookie: admin, body: { cand_number: '6', cand_name: 'Male Six', cand_team: 'white', cand_gender: 'male' } })
   check('update → success + data', () => {
     assert.equal(upd.status, 200)
     assert.equal(upd.body.status, 'success')
     assert.equal(upd.body.data.cand_name, 'Male Six')
   })
-  const upd404 = await call('PUT', '/api/contestants/9999', { cookie: admin, body: { cand_number: '6', cand_name: 'Male Six', cand_team: 'blue', cand_gender: 'male' } })
+  const upd404 = await call('PUT', '/api/contestants/9999', { cookie: admin, body: { cand_number: '6', cand_name: 'Male Six', cand_team: 'white', cand_gender: 'male' } })
   check('update unknown → 404', () => assert.equal(upd404.status, 404))
   const del = await call('DELETE', `/api/contestants/${target.cand_id}`, { cookie: admin })
   check('delete → success', () => assert.equal(del.body.status, 'success'))

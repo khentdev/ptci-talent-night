@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS contestants (
   cand_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   cand_number VARCHAR(8) NOT NULL,
   cand_name VARCHAR(128) NOT NULL,
-  cand_team ENUM('red', 'yellow', 'green', 'purple', 'blue') NOT NULL,
+  cand_team ENUM('black', 'white', 'purple', 'green', 'red') NOT NULL,
   cand_gender ENUM('male', 'female', 'other') NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

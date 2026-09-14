@@ -10,7 +10,7 @@ export type OverallTalentScore= {
     updated_at: string
 }[]
 
-export type TeamOptions = "red" | "yellow" | "green" | "purple" | "blue"
+export type TeamOptions = "black" | "white" | "purple" | "green" | "red"
 
 
 export type OverallTalentScoreResponseDTO = {

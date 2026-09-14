@@ -117,11 +117,11 @@
   const getTeamBadgeClasses = (team: CandidateTeamOptions) => {
     const teamLower = team.toLowerCase();
     return {
-      red: "bg-red-400 text-white",
-      yellow: "bg-yellow-400 text-gray-800",
-      green: "bg-green-400 text-gray-800",
+      black: "bg-gray-900 text-white",
+      white: "bg-white text-gray-800 ring-1 ring-gray-300",
       purple: "bg-purple-400 text-white",
-      blue: "bg-blue-400 text-white",
+      green: "bg-green-400 text-gray-800",
+      red: "bg-red-400 text-white",
     }[teamLower];
   };
 

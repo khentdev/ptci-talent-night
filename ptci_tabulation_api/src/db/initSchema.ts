@@ -1,7 +1,10 @@
+import type { RowDataPacket } from 'mysql2'
 import { CATEGORIES, CATEGORY_KEYS } from '../scoring/categories.js'
+import { TEAMS } from '../types/index.js'
 import { closePool, getPool } from './pool.js'
 
 const TABLE_OPTS = 'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+const TEAM_ENUM = TEAMS.map((t) => `'${t}'`).join(', ')
 
 /** One scores table per category, generated from scoring/categories.ts. */
 function scoresTableStatement(key: (typeof CATEGORY_KEYS)[number]): string {
@@ -42,7 +45,7 @@ export const SCHEMA_STATEMENTS: string[] = [
     cand_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     cand_number VARCHAR(8) NOT NULL,
     cand_name VARCHAR(128) NOT NULL,
-    cand_team ENUM('red', 'yellow', 'green', 'purple', 'blue') NOT NULL,
+    cand_team ENUM(${TEAM_ENUM}) NOT NULL,
     cand_gender ENUM('male', 'female', 'other') NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -65,12 +68,40 @@ export const SCHEMA_STATEMENTS: string[] = [
   ) ${TABLE_OPTS}`,
 ]
 
-/** Idempotent: safe to run on every boot (CREATE TABLE IF NOT EXISTS only). */
+/**
+ * Brings an existing `contestants.cand_team` ENUM in line with TEAMS (CREATE TABLE IF NOT
+ * EXISTS never alters it). Skipped with a warning while rows still use a retired team.
+ */
+async function migrateTeamEnum(): Promise<void> {
+  const pool = getPool()
+  const [cols] = await pool.query<RowDataPacket[]>(
+    `SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'contestants' AND COLUMN_NAME = 'cand_team'`,
+  )
+  if (String(cols[0]?.COLUMN_TYPE).replace(/,\s*/g, ', ').toLowerCase() === `enum(${TEAM_ENUM})`) return
+
+  const [stale] = await pool.query<RowDataPacket[]>(
+    `SELECT COUNT(*) AS n FROM contestants WHERE cand_team NOT IN (${TEAMS.map(() => '?').join(', ')})`,
+    [...TEAMS],
+  )
+  const staleCount = Number(stale[0]?.n ?? 0)
+  if (staleCount > 0) {
+    console.warn(
+      `contestants.cand_team not migrated: ${staleCount} contestant(s) use a retired team. ` +
+        `Delete or re-team them, then restart to apply teams: ${TEAMS.join(', ')}`,
+    )
+    return
+  }
+  await pool.query(`ALTER TABLE contestants MODIFY cand_team ENUM(${TEAM_ENUM}) NOT NULL`)
+}
+
+/** Idempotent: safe to run on every boot (CREATE TABLE IF NOT EXISTS + team ENUM sync). */
 export async function initDatabaseSchema(): Promise<void> {
   const pool = getPool()
   for (const statement of SCHEMA_STATEMENTS) {
     await pool.query(statement)
   }
+  await migrateTeamEnum()
 }
 
 // `npm run db:init` — create the tables without starting the server.

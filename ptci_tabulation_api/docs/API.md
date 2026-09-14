@@ -44,7 +44,7 @@ Every error is:
 | DELETE | `/contestants/:id` | admin | → `{ status:"success", message }` (scores cascade) |
 
 `Contestant = { cand_id, cand_number, cand_name, cand_team, cand_gender, created_at }`
-Teams: `red | yellow | green | purple | blue`. Gender: `male | female | other`.
+Teams: `black | white | purple | green | red` (Black Stallion, White Wolves, Purple Hawk, Green Dragon, Red Vipers). Gender: `male | female | other`.
 `(cand_gender, cand_number)` must be unique.
 
 ## Scores

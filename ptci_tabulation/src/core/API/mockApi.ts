@@ -52,7 +52,7 @@ const CATEGORY_FIELDS: Record<Category, string[]> = {
 };
 
 const SEED_JUDGE_IDS = ["1", "2", "3"];
-const TEAMS: CandidateTeamOptions[] = ["red", "yellow", "green", "purple", "blue"];
+const TEAMS: CandidateTeamOptions[] = ["black", "white", "purple", "green", "red"];
 const MALE_NAMES = ["Juan Dela Cruz", "Miguel Santos", "Carlo Reyes", "Paolo Garcia", "Rafael Mendoza", "Gabriel Torres", "Marco Villanueva", "Enzo Bautista", "Andres Ramos", "Luis Fernandez"];
 const FEMALE_NAMES = ["Maria Clara", "Andrea Santos", "Bianca Reyes", "Sofia Garcia", "Isabella Mendoza", "Angela Torres", "Camille Villanueva", "Nicole Bautista", "Patricia Ramos", "Katrina Fernandez"];
 

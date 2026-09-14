@@ -202,6 +202,14 @@ const selectedTeamLabel = ref<string | null>(null);
 const selectedGender = ref<GenderOptions>("male");
 const selectedGenderLabel = ref<Capitalize<GenderOptions>>("Male");
 
+const teamLabels: Record<CandidateTeamOptions, string> = {
+  black: "Black Stallion",
+  white: "White Wolves",
+  purple: "Purple Hawk",
+  green: "Green Dragon",
+  red: "Red Vipers",
+};
+
 const fillName = (fullname: string) => {
   const { lastName, firstName } = splitName(fullname);
   candidateLastName.value = lastName;
@@ -210,7 +218,7 @@ const fillName = (fullname: string) => {
 const populateForm = (data: UpdateCandidateParams) => {
   candidateNumber.value = data.cand_number;
   selectedTeam.value = data.cand_team;
-  selectedTeamLabel.value = CapitalizeLabel(data.cand_team);
+  selectedTeamLabel.value = teamLabels[data.cand_team];
   selectedGender.value = data.cand_gender;
   selectedGenderLabel.value = CapitalizeLabel(data.cand_gender);
   fillName(data.cand_name);
@@ -224,16 +232,11 @@ watch(
   { immediate: true },
 );
 
-const teamOptions: CandidateTeamOptions[] = [
-  "red",
-  "yellow",
-  "green",
-  "purple",
-  "blue",
-];
-const formattedTeamOptions = teamOptions.map((color) => ({
-  label: color.charAt(0).toUpperCase() + color.slice(1),
-  value: color,
+const formattedTeamOptions = (
+  Object.keys(teamLabels) as CandidateTeamOptions[]
+).map((team) => ({
+  label: teamLabels[team],
+  value: team,
 }));
 
 const genderOptions: GenderOptions[] = ["male", "female", "other"];
@@ -262,11 +265,11 @@ const selectGender = (gender: GenderOptions) => {
 
 const formatTeamColor = (color: CandidateTeamOptions) => {
   return {
-    red: "text-red-500",
-    yellow: "text-yellow-400",
-    green: "text-green-500",
+    black: "text-gray-900",
+    white: "text-gray-400",
     purple: "text-purple-500",
-    blue: "text-blue-500",
+    green: "text-green-500",
+    red: "text-red-500",
   }[color];
 };
 watch(
@@ -304,7 +307,7 @@ watch(
   [candidateNumber, candidateFirstName, candidateLastName],
   ([candInput, firstName, lastName]) => {
     const digitOnly = /\D/g;
-    const wordsOnly = /[^a-zA-Z\s,]/g;
+    const wordsOnly = /[^\p{L}\s,]/gu;
     candidateNumber.value = candInput?.replace(digitOnly, "").substring(0, 11);
     candidateFirstName.value = firstName
       .replace(wordsOnly, "")

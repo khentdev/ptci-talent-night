@@ -41,11 +41,11 @@
               class="bg-gray-50 border border-gray-200 flex flex-col gap-2 rounded-lg p-3 text-gray-800 text-sm"
             >
               <div>
-                <span class="font-medium">Candidate Number:</span>
+                <span class="font-medium">{{ numberLabel }}:</span>
                 {{ props.datas?.number }}
               </div>
               <div>
-                <span class="font-medium">Candidate:</span>
+                <span class="font-medium">{{ nameLabel }}:</span>
                 {{ props.datas?.name }}
               </div>
             </div>
@@ -74,7 +74,6 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { defineProps } from "vue";
 import { ACTION_STYLES } from "../../constants/formStyles";
 
 const props = withDefaults(
@@ -82,6 +81,8 @@ const props = withDefaults(
     show: boolean;
     title?: string;
     description?: string;
+    numberLabel?: string;
+    nameLabel?: string;
     datas: { id: string; name: string; number: string } | null;
     onDelete: ({ id }: { id: string }) => void;
     onClose: () => void;
@@ -89,6 +90,8 @@ const props = withDefaults(
   {
     title: "Delete Entity",
     description: "Are you sure you want to delete this entity?",
+    numberLabel: "Candidate Number",
+    nameLabel: "Candidate",
     datas: () => ({ name: "- Unknown -", id: "", number: "#" }),
   }
 );

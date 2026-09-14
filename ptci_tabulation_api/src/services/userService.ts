@@ -105,7 +105,7 @@ export async function removeAccount(id: number, actor: UserRecord): Promise<Acco
   for (const category of CATEGORY_KEYS) {
     if (await judgeHasScored(category, id)) {
       throw unprocessable(
-        `"${user.username}" has submitted scores and cannot be deleted. Deactivate the account instead (PUT /users/${id}/active).`,
+        `"${user.username}" has already submitted scores and can't be deleted. Deactivate the account instead to remove their access.`,
       )
     }
   }

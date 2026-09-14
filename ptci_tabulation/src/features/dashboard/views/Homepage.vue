@@ -54,7 +54,7 @@
                     {{ `No. ${candidate.number}` }}
                   </h1>
                   <h3
-                    class="desktop-overlay-text mb-2 font-bold text-center text-white md:text-xl text-nowrap"
+                    class="desktop-overlay-text mb-2 font-bold text-center text-white md:text-lg text-nowrap"
                   >
                     {{ candidate.name }}
                   </h3>
@@ -65,12 +65,12 @@
                     <span
                       class="desktop-overlay-text px-2 py-1 font-semibold text-white rounded-full shadow-md bg-primary md:px-3 shrink-0"
                     >
-                      {{ candidate.year }}
+                      {{ candidate.course }}
                     </span>
                     <span
                       class="desktop-overlay-text px-2 py-1 font-semibold text-white rounded-full shadow-md bg-primary/80 md:px-3"
                     >
-                      {{ candidate.course }}
+                      {{ candidate.team }}
                     </span>
                   </div>
                 </div>
@@ -122,12 +122,12 @@
                     <span
                       class="mobile-overlay-text px-2 py-1 font-semibold text-white rounded-full shadow-md bg-primary shrink-0"
                     >
-                      {{ candidate.year }}
+                      {{ candidate.course }}
                     </span>
                     <span
                       class="mobile-overlay-text px-2 py-1 font-semibold text-white rounded-full shadow-md bg-primary/80"
                     >
-                      {{ candidate.course }}
+                      {{ candidate.team }}
                     </span>
                   </div>
                 </div>
@@ -160,28 +160,28 @@ import { onMounted, onUnmounted, ref, watch } from "vue";
 import { gsap } from "gsap";
 
 // Female
-import Aniar from "../../../assets/images/F8.jpg";
-import DelaCruz from "../../../assets/images/F6.jpg";
-import DelosSantos from "../../../assets/images/F2.jpg";
-import Tindog from "../../../assets/images/F1.jpg";
-import Buenaflor from "../../../assets/images/F4.jpg";
-import Gabuco from "../../../assets/images/F7.jpg";
-import Badang from "../../../assets/images/F10.jpg";
-import Lungcay from "../../../assets/images/F9.jpg";
-import Cortez from "../../../assets/images/F3.jpg";
-import Floria from "../../../assets/images/F5.jpg";
+import Ferrer from "../../../assets/images/FEMALE/1.jpg";
+import Vergara from "../../../assets/images/FEMALE/2.jpg";
+import Cabuenas from "../../../assets/images/FEMALE/3.jpg";
+import Susing from "../../../assets/images/FEMALE/4.jpg";
+import Orca from "../../../assets/images/FEMALE/5.jpg";
+import Samonte from "../../../assets/images/FEMALE/6.jpg";
+import Felipe from "../../../assets/images/FEMALE/7.jpg";
+import Panagsagan from "../../../assets/images/FEMALE/8.jpg";
+import Sena from "../../../assets/images/FEMALE/9.jpg";
+import Bernardo from "../../../assets/images/FEMALE/10.jpg";
 
 // Male
-import Paniza from "../../../assets/images/M8.jpg";
-import Montserate from "../../../assets/images/M3.jpg";
-import Napolitano from "../../../assets/images/M10.jpg";
-import Reyes from "../../../assets/images/M2.jpg";
-import Avelino from "../../../assets/images/M4.jpg";
-import Nuhay from "../../../assets/images/M6.jpg";
-import Miguel from "../../../assets/images/M7.jpg";
-import Mendoza from "../../../assets/images/M5.jpg";
-import Palay from "../../../assets/images/M1.jpg";
-import Tenorio from "../../../assets/images/M9.jpg";
+import Alangilan from "../../../assets/images/MALE/1.jpg";
+import Senador from "../../../assets/images/MALE/2.jpg";
+import Paniza from "../../../assets/images/MALE/3.jpg";
+import Nuhay from "../../../assets/images/MALE/4.jpg";
+import Ramiso from "../../../assets/images/MALE/5.jpg";
+import Miguel from "../../../assets/images/MALE/6.jpg";
+import Lopez from "../../../assets/images/MALE/7.jpg";
+import Rubia from "../../../assets/images/MALE/8.jpg";
+import Canete from "../../../assets/images/MALE/9.jpg";
+import Chan from "../../../assets/images/MALE/10.jpg";
 
 const { isDesktop, shouldShowKeyboardHint } = useDeviceDetection();
 
@@ -189,7 +189,6 @@ interface Candidate {
   number: number;
   name: string;
   team: string;
-  year: string;
   course: string;
   image: string;
   gender?: string;
@@ -199,184 +198,163 @@ const candidates: Candidate[] = [
   // Female candidates
   {
     number: 1,
-    name: "Andrea Mae Aniar",
-    team: "Yellow Predators",
-    year: "3rd Year",
+    name: "Venus Nicole Ferrer",
+    team: "Black Stallion",
     course: "BSOA",
-    image: Aniar,
+    image: Ferrer,
     gender: "Female",
   },
   {
     number: 2,
-    name: "Christine Dela Cruz",
-    team: "Purple Gladiators",
-    year: "1st Year",
-    course: "BSHM",
-    image: DelaCruz,
+    name: "Laarni Vergara",
+    team: "White Wolves",
+    course: "SHS",
+    image: Vergara,
     gender: "Female",
   },
   {
     number: 3,
-    name: "Jona May Delos Santos",
-    team: "Purple Gladiators",
-    year: "1st Year",
-    course: "BSHM",
-    image: DelosSantos,
+    name: "Jade Cabuenas",
+    team: "White Wolves",
+    course: "BSIT",
+    image: Cabuenas,
     gender: "Female",
   },
   {
     number: 4,
-    name: "Rhea Tindog",
-    team: "Green Warriors",
-    year: "1st Year",
-    course: "BSOA",
-    image: Tindog,
+    name: "Princess Jamaica Susing",
+    team: "Purple Hawk",
+    course: "BSHM",
+    image: Susing,
     gender: "Female",
   },
   {
     number: 5,
-    name: "Roela Buenaflor",
-    team: "Green Warriors",
-    year: "1st Year",
-    course: "BSIT",
-    image: Buenaflor,
+    name: "Rhean Faith Orca",
+    team: "Green Dragon",
+    course: "BSHM",
+    image: Orca,
     gender: "Female",
   },
-
   {
     number: 6,
-    name: "Janguem Gabuco",
-    team: "Red Avengers",
-    year: "1st Year",
-    course: "BSENVI",
-    image: Gabuco,
+    name: "Carmela Samonte",
+    team: "Red Vipers",
+    course: "BSOA",
+    image: Samonte,
     gender: "Female",
   },
   {
     number: 7,
-    name: "Ethel Badang",
-    team: "Red Avengers",
-    year: "1st Year",
-    course: "ACT",
-    image: Badang,
+    name: "Jean Ryaen Felipe",
+    team: "Green Dragon",
+    course: "BSHM",
+    image: Felipe,
     gender: "Female",
   },
   {
     number: 8,
-    name: "Keanna Lungcay",
-    team: "Blue Raptors",
-    year: "Senior High",
-    course: "BFA",
-    image: Lungcay,
+    name: "Althea Panagsagan",
+    team: "Purple Hawk",
+    course: "BSHM",
+    image: Panagsagan,
     gender: "Female",
   },
   {
     number: 9,
-    name: "Ivy Cortez",
-    team: "Yellow Predators",
-    year: "1st Year",
-    course: "BSIT",
-    image: Cortez,
+    name: "Yashira Coleen Sena",
+    team: "Black Stallion",
+    course: "SHS",
+    image: Sena,
     gender: "Female",
   },
   {
     number: 10,
-    name: "Quezada Floria",
-    team: "Blue Raptors",
-    year: "3rd Year",
-    course: "BSHM",
-    image: Floria,
+    name: "Alleria Bernardo",
+    team: "Red Vipers",
+    course: "BSOA",
+    image: Bernardo,
     gender: "Female",
   },
   // Male candidates
   {
     number: 1,
-    name: "Ray Eldrine Paniza",
-    team: "Yellow Predators",
-    year: "1st Year",
+    name: "Louie Alangilan",
+    team: "Black Stallion",
+    course: "SHS",
+    image: Alangilan,
+    gender: "Male",
+  },
+  {
+    number: 2,
+    name: "David Imanuel Senador",
+    team: "White Wolves",
+    course: "SHS",
+    image: Senador,
+    gender: "Male",
+  },
+  {
+    number: 3,
+    name: "Rey Eldrine Paniza",
+    team: "White Wolves",
     course: "BSIT",
     image: Paniza,
     gender: "Male",
   },
   {
-    number: 2,
-    name: "Kevin Monserate",
-    team: "Purple Gladiators",
-    year: "1st Year",
-    course: "BSIT",
-    image: Montserate,
-    gender: "Male",
-  },
-  {
-    number: 3,
-    name: "Joe Mharie Napolitano",
-    team: "Purple Gladiators",
-    year: "1st Year",
-    course: "BSHM",
-    image: Napolitano,
-    gender: "Male",
-  },
-  {
     number: 4,
-    name: "Philipe Reyes",
-    team: "Green Warriors",
-    year: "1st Year",
-    course: "BSIT",
-    image: Reyes,
-    gender: "Male",
-  },
-  {
-    number: 5,
-    name: "Kenth Francis Avelino",
-    team: "Green Warriors",
-    year: "1st Year",
-    course: "BSHM",
-    image: Avelino,
-    gender: "Male",
-  },
-  {
-    number: 6,
-    name: "Sean Steve Tenorio",
-    team: "Red Avengers",
-    year: "1st Year",
-    course: "BSIT",
-    image: Tenorio,
-    gender: "Male",
-  },
-  {
-    number: 7,
     name: "Froilan Nuhay",
-    team: "Red Avengers",
-    year: "1st Year",
+    team: "Purple Hawk",
     course: "BSIT",
     image: Nuhay,
     gender: "Male",
   },
   {
-    number: 8,
-    name: "John Israel Miguel ",
-    team: "Blue Raptors",
-    year: "1st Year",
+    number: 5,
+    name: "Gabriel Ramiso",
+    team: "Green Dragon",
+    course: "BSIT",
+    image: Ramiso,
+    gender: "Male",
+  },
+  {
+    number: 6,
+    name: "John Israel Miguel",
+    team: "Red Vipers",
     course: "BSIT",
     image: Miguel,
     gender: "Male",
   },
   {
+    number: 7,
+    name: "John Caleb Lopez",
+    team: "Green Dragon",
+    course: "BSIS",
+    image: Lopez,
+    gender: "Male",
+  },
+  {
+    number: 8,
+    name: "Jade Azryll Rubia",
+    team: "Purple Hawk",
+    course: "BSHM",
+    image: Rubia,
+    gender: "Male",
+  },
+  {
     number: 9,
-    name: "John Fritz Mendoza",
-    team: "Yellow Predators",
-    year: "1sr Year",
-    course: "BSIT",
-    image: Mendoza,
+    name: "Kiann Jay Cañete",
+    team: "Black Stallion",
+    course: "BSHM",
+    image: Canete,
     gender: "Male",
   },
   {
     number: 10,
-    name: "Roldan Palay",
-    team: "Blue Raptors",
-    year: "1st Year",
-    course: "BSCS",
-    image: Palay,
+    name: "Ralph Louie Chan",
+    team: "Red Vipers",
+    course: "BSIS",
+    image: Chan,
     gender: "Male",
   },
 ];

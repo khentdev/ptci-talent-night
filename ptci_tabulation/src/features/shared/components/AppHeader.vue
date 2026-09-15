@@ -40,8 +40,23 @@
             </span>
           </a>
         </router-link>
-
+        <router-link
+          v-if="!authStore.isLoggedIn"
+          to="/auth/login"
+          name="login"
+          v-slot="{ navigate, href }"
+          :custom="true"
+        >
+          <a
+            :href="href"
+            @click.prevent="() => handleNav(navigate)"
+            class="relative font-medium hover:text-primary font-poppins transition-colors px-4 duration-200"
+          >
+            Login
+          </a>
+        </router-link>
         <button
+          v-if="userRole === 'admin' || userRole === 'judge'"
           type="button"
           :disabled="authStore.loadingState.isLoggingOut"
           @click="handleLogout"
@@ -91,7 +106,7 @@ const allNavRoutes: NavRoute[] = [
 ];
 
 const navRoutes = computed(() =>
-  allNavRoutes.filter((r) => !r.role || r.role === userRole.value)
+  allNavRoutes.filter((r) => !r.role || r.role === userRole.value),
 );
 
 const handleNav = (nav: () => void) => nav();

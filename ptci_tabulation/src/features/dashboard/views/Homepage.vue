@@ -68,7 +68,8 @@
                       {{ candidate.course }}
                     </span>
                     <span
-                      class="desktop-overlay-text px-2 py-1 font-semibold text-white rounded-full shadow-md bg-primary/80 md:px-3"
+                      class="desktop-overlay-text px-2 py-1 font-semibold rounded-full shadow-md md:px-3"
+                      :class="getTeamColor(candidate.team)"
                     >
                       {{ candidate.team }}
                     </span>
@@ -125,7 +126,8 @@
                       {{ candidate.course }}
                     </span>
                     <span
-                      class="mobile-overlay-text px-2 py-1 font-semibold text-white rounded-full shadow-md bg-primary/80"
+                      class="mobile-overlay-text px-2 py-1 font-semibold rounded-full shadow-md"
+                      :class="getTeamColor(candidate.team)"
                     >
                       {{ candidate.team }}
                     </span>
@@ -193,6 +195,17 @@ interface Candidate {
   image: string;
   gender?: string;
 }
+
+const teamColors: Record<string, string> = {
+  "Black Stallion": "bg-gray-900 text-white",
+  "White Wolves": "bg-white text-gray-800 ring-1 ring-gray-300",
+  "Purple Hawk": "bg-purple-400 text-white",
+  "Green Dragon": "bg-green-400 text-gray-800",
+  "Red Vipers": "bg-red-400 text-white",
+};
+
+const getTeamColor = (team: string) =>
+  teamColors[team] ?? "bg-primary/80 text-white";
 
 const candidates: Candidate[] = [
   // Female candidates

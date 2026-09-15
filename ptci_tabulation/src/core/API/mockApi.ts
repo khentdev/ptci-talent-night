@@ -251,11 +251,18 @@ const submitScoreBatch = (category: Category): Handler => ({ state, body }) => {
         return { cand_id: Number(candId), score_id: Number(row.score_id), total_score: String(total) };
     });
 
-    const updatedUser: UserData = { ...user, has_submitted: true };
+    // Only flag the judge as submitted once they have scored both male and female candidates.
+    const scoredGenders = new Set(
+        state.scores[category]
+            .filter((s) => s.judge_id === user.id)
+            .map((s) => candidateById(state, s.cand_id)?.cand_gender),
+    );
+    const hasSubmitted = user.has_submitted || (scoredGenders.has("male") && scoredGenders.has("female"));
+    const updatedUser: UserData = { ...user, has_submitted: hasSubmitted };
     state.users[user.id] = { ...state.users[user.id], ...updatedUser };
     state.session = updatedUser;
 
-    return { status: 200, message: "Scores submitted successfully.", results, has_submitted: true };
+    return { status: 200, message: "Scores submitted successfully.", results, has_submitted: hasSubmitted };
 };
 
 /** This judge's own scores in a category, gender-filtered — mirrors the "/judges" handler's row shape but flat. */

@@ -8,7 +8,7 @@ deploy
 # env — never commit real credentials
 .env
 .env.*
-.environment.*
+environment.*
 !.env.example
 
 # logs

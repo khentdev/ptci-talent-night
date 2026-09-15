@@ -11,7 +11,7 @@
           type === 'female' ? 'females' : 'males'
         }. Please check your connection and try again.`"
       />
-      <is-empty-state v-else-if="!judgesScoresData" />
+      <is-empty-state v-else-if="!judgesScoresData?.length" />
       <table :class="TABLE_STYLES.TB" v-else>
         <thead :class="TABLE_STYLES.THEADROW">
           <tr>

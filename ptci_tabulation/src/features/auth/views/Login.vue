@@ -168,12 +168,6 @@
                   </template>
                 </span>
               </button>
-
-              <span
-                class="mt-2 text-gray-700 underline transition-colors duration-300 cursor-pointer hover:text-gray-800 w-fit"
-              >
-                Forgot password?
-              </span>
             </form>
           </div>
         </div>

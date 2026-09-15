@@ -4,7 +4,6 @@ import { useAuthStore } from "../../features/auth/store/authStore";
 import { authRoutes } from "../../features/auth/authRoutes";
 import {
   homeRoutes,
-  dashboardOverviewRoutes,
 } from "../../features/dashboard/dashboardRoutes";
 import { talentRoutes } from "../../features/talent/talentRoutes";
 import { settingsRoutes } from "../../features/settings/settingsRoutes";
@@ -36,7 +35,7 @@ const routes: RouteRecordRaw[] = [
     path: "/dashboard",
     name: "dashboard",
     meta: { requiresAuth: true },
-    redirect: { name: "dashboard-overview" },
+    redirect: { name: "talent-judge-male" },
     component: () => import("../layouts/dashboardLayout.vue"),
     beforeEnter: () => {
       const authStore = useAuthStore();
@@ -44,7 +43,6 @@ const routes: RouteRecordRaw[] = [
         return { name: "home-default" };
     },
     children: [
-      ...dashboardOverviewRoutes,
       ...talentRoutes,
       ...settingsRoutes,
       {

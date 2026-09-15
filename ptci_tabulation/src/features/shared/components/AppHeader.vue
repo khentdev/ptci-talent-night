@@ -85,7 +85,7 @@ const router = useRouter();
 
 const handleLogout = async () => {
   await authStore.logoutUser();
-  router.push({ name: "login" });
+  router.push({ name: "home-default" });
 };
 const userRole = computed(() => authStore.getUserMetaData?.role);
 
@@ -93,7 +93,7 @@ const allNavRoutes: NavRoute[] = [
   { label: "Homepage", routeName: "home-default", pathPrefix: "/" },
   {
     label: "Dashboard",
-    routeName: "dashboard-overview",
+    routeName: "talent-judge-male",
     pathPrefix: "/dashboard",
     role: "admin",
   },

@@ -7,12 +7,3 @@ export const homeRoutes: RouteRecordRaw[] = [
     component: () => import("./views/Homepage.vue"),
   },
 ];
-
-export const dashboardOverviewRoutes: RouteRecordRaw[] = [
-  {
-    path: "overview",
-    name: "dashboard-overview",
-    meta: { requiresAuth: true },
-    component: () => import("./views/Overview.vue"),
-  },
-];

@@ -112,7 +112,18 @@ VITE_MOCK_API=false
    Generate a secret locally: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`
 
 5. Deploy, then open `https://<api-domain>/health` → expect `{ "ok": true, "mysql": "ok" }`
-6. Create the first admin. Either run the seed once from your PC against the Hostinger DB (layout B style, Remote MySQL enabled for your IP):
+6. Create the first admin. **Over SSH** (admin only — no judges, no sample data; runs the compiled `dist/` with plain node, no tsx needed):
+
+   ```bash
+   find ~/domains -maxdepth 5 -name package.json -not -path "*/node_modules/*"   # locate the Node app's folder
+   cd <that folder>
+   MYSQL_HOST=localhost MYSQL_USER=... MYSQL_PASSWORD=... MYSQL_DATABASE=... \
+   SEED_ADMIN_USERNAME=admin SEED_ADMIN_PASSWORD='StrongPassw0rd' npm run seed:admin
+   ```
+
+   Env vars set in hPanel are usually **not** visible in an SSH shell, so pass them inline as above. Re-running is safe (an existing username is left unchanged).
+
+   Or run the seed once from your PC against the Hostinger DB (layout B style, Remote MySQL enabled for your IP):
 
    ```bash
    MYSQL_HOST=<remote-host> MYSQL_USER=... MYSQL_PASSWORD=... MYSQL_DATABASE=... npm run seed -- --admin=admin:StrongPassw0rd

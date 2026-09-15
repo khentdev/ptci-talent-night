@@ -23,7 +23,7 @@ const STORAGE_KEY = "mock-api:v1";
 const MIN_DELAY_MS = 200;
 const MAX_DELAY_MS = 500;
 
-type Category = "production" | "uniform" | "swimwear" | "formalwear" | "qna" | "talent" | "top_5";
+type Category = "talent";
 
 type ScoreRow = {
     score_id: string;
@@ -34,27 +34,25 @@ type ScoreRow = {
     created_at: string;
 };
 
+/** `is_active` / `created_at` are optional so datasets persisted before account management still load. */
+type MockUser = UserData & { is_active?: boolean; created_at?: string };
+
 type MockState = {
     session: UserData | null;
-    users: Record<string, UserData>;
+    users: Record<string, MockUser>;
     candidates: CandidatesData[];
     scores: Record<Category, ScoreRow[]>;
     nextCandId: number;
     nextScoreId: number;
+    nextUserId: number;
 };
 
 const CATEGORY_FIELDS: Record<Category, string[]> = {
-    production: ["choreography", "projection", "audience_impact"],
-    uniform: ["poise_and_bearings", "personality_and_projection", "neatness", "overall_impact"],
-    swimwear: ["stage_presence", "figure_and_fitness", "poise_and_bearing", "overall_impact"],
-    formalwear: ["poise_and_bearing", "personality/projection", "appropriateness/ellegance", "overall_impact"],
-    qna: ["total_score"],
     talent: ["mastery", "performance_choreography", "overall_impression", "audience_impact"],
-    top_5: ["qna", "beauty"],
 };
 
 const SEED_JUDGE_IDS = ["1", "2", "3"];
-const TEAMS: CandidateTeamOptions[] = ["red", "yellow", "green", "purple", "blue"];
+const TEAMS: CandidateTeamOptions[] = ["black", "white", "purple", "green", "red"];
 const MALE_NAMES = ["Juan Dela Cruz", "Miguel Santos", "Carlo Reyes", "Paolo Garcia", "Rafael Mendoza", "Gabriel Torres", "Marco Villanueva", "Enzo Bautista", "Andres Ramos", "Luis Fernandez"];
 const FEMALE_NAMES = ["Maria Clara", "Andrea Santos", "Bianca Reyes", "Sofia Garcia", "Isabella Mendoza", "Angela Torres", "Camille Villanueva", "Nicole Bautista", "Patricia Ramos", "Katrina Fernandez"];
 
@@ -109,21 +107,40 @@ const seedScores = (candidates: CandidatesData[], category: Category, startId: n
     return rows;
 };
 
+/** Admin `1` (the id mock login gives admins) plus accounts for the seeded judges that aren't admin. */
+const buildSeedUsers = (): Record<string, MockUser> => {
+    const users: Record<string, MockUser> = {
+        "1": { id: "1", username: "admin", role: "admin", has_submitted: false, is_active: true, created_at: nowIso() },
+    };
+    for (const id of SEED_JUDGE_IDS.filter((id) => !users[id]))
+        users[id] = { id, username: `judge${id}`, role: "judge", has_submitted: true, is_active: true, created_at: nowIso() };
+    return users;
+};
+
 const buildInitialState = (): MockState => {
     const candidates = buildCandidates();
-    // Seed admin-side scoreboards with three fake judges; leave the other
-    // categories empty so the judge forms can be exercised from scratch.
+    // Seed admin-side scoreboards with three fake judges.
     const talent = seedScores(candidates, "talent", 1);
-    const uniform = seedScores(candidates, "uniform", 1000);
-    const top5 = seedScores(candidates, "top_5", 2000);
     return {
         session: null,
-        users: {},
+        users: buildSeedUsers(),
         candidates,
-        scores: { production: [], uniform, swimwear: [], formalwear: [], qna: [], talent, top_5: top5 },
+        scores: { talent },
         nextCandId: candidates.length + 1,
         nextScoreId: 5000,
+        nextUserId: 10000,
     };
+};
+
+/** Older persisted datasets predate account management — add the seed accounts and id counter they lack. */
+const backfillState = (state: MockState): MockState => {
+    state.users ??= {};
+    for (const [id, user] of Object.entries(buildSeedUsers())) {
+        const usernameTaken = Object.values(state.users).some((u) => u.username.toLowerCase() === user.username);
+        if (!state.users[id] && !usernameTaken) state.users[id] = user;
+    }
+    state.nextUserId ??= 10000;
+    return state;
 };
 
 const saveState = (state: MockState) => {
@@ -133,7 +150,7 @@ const saveState = (state: MockState) => {
 const loadState = (): MockState => {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) return JSON.parse(raw) as MockState;
+        if (raw) return backfillState(JSON.parse(raw) as MockState);
     } catch { /* fall through to a fresh state */ }
     const fresh = buildInitialState();
     saveState(fresh);
@@ -143,7 +160,6 @@ const loadState = (): MockState => {
 /** Wipes the mock dataset (session, candidates, scores) and reloads. */
 export const resetMockApi = () => {
     localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem("rulesAgreed");
     window.location.reload();
 };
 
@@ -181,6 +197,22 @@ type Handler = (ctx: { state: MockState; body: Record<string, unknown>; query: U
 
 const requireSession = (state: MockState): UserData => state.session ?? fail(401, "Unauthorized. Please log in.");
 
+const requireAdmin = (state: MockState): UserData => {
+    const user = requireSession(state);
+    if (user.role !== "admin") fail(403, "Forbidden.");
+    return user;
+};
+
+const toAccount = (u: MockUser) => ({
+    id: u.id, username: u.username, role: u.role, has_submitted: u.has_submitted,
+    is_active: u.is_active ?? true, created_at: u.created_at ?? nowIso(),
+});
+
+const accountById = (state: MockState, id: string): MockUser => state.users[id] ?? fail(404, "Account not found.");
+
+const judgeHasScores = (state: MockState, id: string) =>
+    Object.values(state.scores).some((rows) => rows.some((s) => s.judge_id === id));
+
 const submitScore = (category: Category): Handler => ({ state, body }) => {
     const user = requireSession(state);
     const candId = str(body.cand_id);
@@ -196,6 +228,58 @@ const submitScore = (category: Category): Handler => ({ state, body }) => {
     return { status: 200, message: "Score submitted successfully.", score_id: Number(row.score_id), total_score: String(total), has_submitted: true };
 };
 
+/** Validates every item before writing anything, so it's all-or-nothing (mirrors the real backend's DB transaction). */
+const submitScoreBatch = (category: Category): Handler => ({ state, body }) => {
+    const user = requireSession(state);
+    const items = body as unknown as Record<string, unknown>[];
+    if (!Array.isArray(items) || !items.length) fail(422, "No scores provided.");
+
+    for (const item of items) {
+        const candId = str(item.cand_id);
+        if (!candidateById(state, candId)) fail(404, "Contestant not found.");
+        if (state.scores[category].some((s) => s.judge_id === user.id && s.cand_id === candId))
+            fail(422, `You have already submitted a score for candidate #${candId}.`);
+    }
+
+    const results = items.map((item) => {
+        const candId = str(item.cand_id);
+        const fields: Record<string, number> = {};
+        for (const f of CATEGORY_FIELDS[category]) fields[f] = num(item[f]);
+        const total = Object.values(fields).reduce((a, b) => a + b, 0);
+        const row: ScoreRow = { score_id: String(state.nextScoreId++), judge_id: user.id, cand_id: candId, fields, total_score: total, created_at: nowIso() };
+        state.scores[category].push(row);
+        return { cand_id: Number(candId), score_id: Number(row.score_id), total_score: String(total) };
+    });
+
+    const updatedUser: UserData = { ...user, has_submitted: true };
+    state.users[user.id] = { ...state.users[user.id], ...updatedUser };
+    state.session = updatedUser;
+
+    return { status: 200, message: "Scores submitted successfully.", results, has_submitted: true };
+};
+
+/** This judge's own scores in a category, gender-filtered — mirrors the "/judges" handler's row shape but flat. */
+const myScores = (category: Category): Handler => ({ state, query }) => {
+    const user = requireSession(state);
+    const gender = query.get("gender") ?? "male";
+    const data: unknown[] = [];
+    for (const s of state.scores[category]) {
+        if (s.judge_id !== user.id) continue;
+        const c = candidateById(state, s.cand_id);
+        if (!c || c.cand_gender !== gender) continue;
+        data.push({
+            score_id: s.score_id, cand_id: c.cand_id, cand_number: c.cand_number, cand_name: c.cand_name,
+            cand_team: c.cand_team, cand_gender: c.cand_gender, judge_id: s.judge_id,
+            mastery: String(s.fields.mastery ?? 0),
+            performance_choreography: String(s.fields.performance_choreography ?? 0),
+            overall_impression: String(s.fields.overall_impression ?? 0),
+            audience_impact: String(s.fields.audience_impact ?? 0),
+            total_score: String(s.total_score),
+        });
+    }
+    return { status: 200, message: "Your scores fetched successfully.", data };
+};
+
 const talentTotalsByCandidate = (state: MockState) => {
     const map = new Map<string, number[]>();
     for (const s of state.scores.talent) map.set(s.cand_id, [...(map.get(s.cand_id) ?? []), s.total_score]);
@@ -208,11 +292,15 @@ const handlers: Record<string, Partial<Record<string, Handler>>> = {
             const username = str(body.username).trim();
             const password = str(body.password);
             if (!username || !password) fail(422, "Username and password are required.");
-            const role = username.toLowerCase().includes("admin") ? "admin" : "judge";
-            const id = role === "admin" ? "1" : hashId(username);
+            // Accounts created through /users keep their own id and role; anyone else is derived from the username.
+            const known = Object.values(state.users).find((u) => u.username.toLowerCase() === username.toLowerCase());
+            if (known?.is_active === false) fail(401, "This account has been deactivated.");
+            const role = known?.role ?? (username.toLowerCase().includes("admin") ? "admin" : "judge");
+            const id = known?.id ?? (role === "admin" ? "1" : hashId(username));
             const existing = state.users[id];
-            const user: UserData = existing ?? { id, username, role, has_submitted: false };
-            state.users[id] = user;
+            const stored: MockUser = existing ?? { id, username, role, has_submitted: false, is_active: true, created_at: nowIso() };
+            state.users[id] = stored;
+            const user: UserData = { id: stored.id, username: stored.username, role: stored.role, has_submitted: stored.has_submitted };
             state.session = user;
             return { status: 200, loggedIn: true, user, redirect: role === "admin" ? "/dashboard" : "/judge" };
         },
@@ -233,7 +321,7 @@ const handlers: Record<string, Partial<Record<string, Handler>>> = {
         PUT: ({ state }) => {
             const user = requireSession(state);
             const updated = { ...user, has_submitted: true };
-            state.users[user.id] = updated;
+            state.users[user.id] = { ...state.users[user.id], ...updated };
             state.session = updated;
             return { status: "success", message: "User marked as submitted.", has_submitted: true };
         },
@@ -277,35 +365,78 @@ const handlers: Record<string, Partial<Record<string, Handler>>> = {
         },
     },
 
-    "/scores/production": { POST: submitScore("production") },
-    "/scores/uniform": { POST: submitScore("uniform") },
-    "/scores/swimwear": { POST: submitScore("swimwear") },
-    "/scores/formalwear": { POST: submitScore("formalwear") },
-    "/scores/qna": { POST: submitScore("qna") },
-    "/scores/talent": { POST: submitScore("talent") },
-    "/scores/top-five": { POST: submitScore("top_5") },
-
-    "/scores/uniform/final": {
-        GET: ({ state }) => {
-            requireSession(state);
-            const data = state.candidates.flatMap((c) => {
-                const rows = state.scores.uniform.filter((s) => s.cand_id === c.cand_id);
-                if (!rows.length) return [];
-                const f = (k: string) => String(round2(avg(rows.map((r) => r.fields[k] ?? 0))));
-                return [{
-                    score_id: rows[0]!.score_id,
-                    cand_id: c.cand_id, cand_number: c.cand_number, cand_name: c.cand_name,
-                    cand_team: c.cand_team, cand_gender: c.cand_gender,
-                    poise_and_bearings: f("poise_and_bearings"),
-                    personality_and_projection: f("personality_and_projection"),
-                    neatness: f("neatness"),
-                    overall_impact: f("overall_impact"),
-                    total_score: String(round2(avg(rows.map((r) => r.total_score)))),
-                }];
-            });
-            return { stats: 200, status: 200, message: "Uniform scores fetched successfully.", data };
+    "/users": {
+        GET: ({ state, query }) => {
+            requireAdmin(state);
+            const role = query.get("role");
+            const data = Object.values(state.users)
+                .filter((u) => !role || u.role === role)
+                .sort((a, b) => a.username.localeCompare(b.username))
+                .map(toAccount);
+            return { status: 200, message: "Accounts fetched successfully.", data };
+        },
+        POST: ({ state, body }) => {
+            requireAdmin(state);
+            const username = str(body.username).trim().toLowerCase();
+            const password = str(body.password);
+            const role = str(body.role);
+            if (!/^[a-z0-9._-]{3,64}$/.test(username)) fail(422, "username: Username must be 3-64 characters (a-z, 0-9, . _ -)");
+            if (password.length < 8) fail(422, "password: Password must be at least 8 characters");
+            if (role !== "admin" && role !== "judge") fail(422, "role: Role must be admin or judge");
+            if (Object.values(state.users).some((u) => u.username.toLowerCase() === username))
+                fail(422, `Username "${username}" is already taken.`);
+            const user: MockUser = {
+                id: String(state.nextUserId++), username, role: role as UserData["role"],
+                has_submitted: false, is_active: true, created_at: nowIso(),
+            };
+            state.users[user.id] = user;
+            return { status: "success", message: `${role === "admin" ? "Admin" : "Judge"} account created successfully.`, data: toAccount(user) };
         },
     },
+    "/users/:id": {
+        DELETE: ({ state, body }) => {
+            const actor = requireAdmin(state);
+            const id = str(body.id);
+            if (id === actor.id) fail(422, "You cannot delete your own account.");
+            const user = accountById(state, id);
+            if (judgeHasScores(state, id))
+                fail(422, `"${user.username}" has already submitted scores and can't be deleted. Deactivate the account instead to remove their access.`);
+            delete state.users[id];
+            return { status: "success", message: "Account deleted successfully." };
+        },
+    },
+    "/users/:id/password": {
+        PUT: ({ state, body }) => {
+            requireAdmin(state);
+            const user = accountById(state, str(body.id));
+            if (str(body.password).length < 8) fail(422, "password: Password must be at least 8 characters");
+            return { status: "success", message: "Password updated successfully.", data: toAccount(user) };
+        },
+    },
+    "/users/:id/reset-submission": {
+        PUT: ({ state, body }) => {
+            requireAdmin(state);
+            const user = accountById(state, str(body.id));
+            user.has_submitted = false;
+            return { status: "success", message: "Submission flag cleared.", data: toAccount(user) };
+        },
+    },
+    "/users/:id/active": {
+        PUT: ({ state, body }) => {
+            const actor = requireAdmin(state);
+            if (typeof body.is_active !== "boolean") fail(422, "is_active must be true or false");
+            const id = str(body.id);
+            if (id === actor.id && body.is_active === false) fail(422, "You cannot deactivate your own account.");
+            const user = accountById(state, id);
+            user.is_active = body.is_active as boolean;
+            return { status: "success", message: user.is_active ? "Account activated." : "Account deactivated.", data: toAccount(user) };
+        },
+    },
+
+    "/scores/talent": { POST: submitScore("talent") },
+    "/scores/talent/batch": { POST: submitScoreBatch("talent") },
+    "/scores/talent/mine": { GET: myScores("talent") },
+
     "/scores/talent/judges": {
         GET: ({ state, query }) => {
             requireSession(state);
@@ -344,22 +475,6 @@ const handlers: Record<string, Partial<Record<string, Handler>>> = {
             return { status: 200, message: "Talent final scores fetched successfully.", data };
         },
     },
-    "/scores/top-five/candidates": {
-        GET: ({ state }) => {
-            requireSession(state);
-            const totals = talentTotalsByCandidate(state);
-            const topFor = (gender: GenderOptions) => state.candidates
-                .filter((c) => c.cand_gender === gender)
-                .map((c) => ({
-                    cand_id: c.cand_id, cand_number: c.cand_number, cand_name: c.cand_name,
-                    cand_team: c.cand_team, cand_gender: c.cand_gender,
-                    total_score: String(round2(avg(totals.get(c.cand_id) ?? [0]))),
-                }))
-                .sort((a, b) => Number(b.total_score) - Number(a.total_score))
-                .slice(0, 5);
-            return { status: 200, message: "Top 5 candidates fetched successfully.", data: [...topFor("male"), ...topFor("female")] };
-        },
-    },
 };
 
 // ---------- the adapter ----------
@@ -367,9 +482,14 @@ const handlers: Record<string, Partial<Record<string, Handler>>> = {
 const mockAdapter: AxiosAdapter = async (config) => {
     const url = new URL(config.url ?? "/", "http://mock.local");
     const method = (config.method ?? "get").toUpperCase();
-    // Parametric route: /contestants/:id -> handler key "/contestants/:id" with cand_id taken from the URL
-    const idMatch = /^\/contestants\/(\d+)$/.exec(url.pathname);
-    const routeKey = idMatch ? "/contestants/:id" : url.pathname;
+    // Parametric routes: /contestants/:id (cand_id from the URL) and /users/:id[/action] (id from the URL)
+    const candMatch = /^\/contestants\/(\d+)$/.exec(url.pathname);
+    const userMatch = /^\/users\/(\d+)(?:\/(password|reset-submission|active))?$/.exec(url.pathname);
+    const routeKey = candMatch
+        ? "/contestants/:id"
+        : userMatch
+            ? `/users/:id${userMatch[2] ? `/${userMatch[2]}` : ""}`
+            : url.pathname;
     const route = handlers[routeKey];
     const handler = route?.[method];
 
@@ -386,7 +506,8 @@ const mockAdapter: AxiosAdapter = async (config) => {
 
         const state = loadState();
         const body = parseBody(config);
-        if (idMatch) body.cand_id = idMatch[1];
+        if (candMatch) body.cand_id = candMatch[1];
+        if (userMatch) body.id = userMatch[1];
         const data = handler!({ state, body, query: url.searchParams });
         saveState(state);
         return respond(200, data);

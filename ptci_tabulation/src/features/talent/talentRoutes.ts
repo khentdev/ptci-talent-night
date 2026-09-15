@@ -25,4 +25,10 @@ export const talentRoutes: RouteRecordRaw[] = [
         meta: { requiresAuth: true },
         component: () => import("./views/OverallScoreFemale.vue")
     },
+    {
+        path: "talent/overall-score-top3",
+        name: "overall-score-top3",
+        meta: { requiresAuth: true },
+        component: () => import("./views/OverallScoreTopThree.vue")
+    },
 ]

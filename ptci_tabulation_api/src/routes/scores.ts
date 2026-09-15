@@ -5,8 +5,8 @@ import { authenticate, requireRole } from '../plugins/auth.js'
 import { CATEGORIES, CATEGORY_KEYS, isCategoryKey, type CategoryKey } from '../scoring/categories.js'
 import { logActivity } from '../services/activityService.js'
 import { genderQuerySchema } from '../services/contestantService.js'
-import { candidateFinals, judgeScoresGrouped, overallStandings, topFiveCandidates } from '../services/scoreboardService.js'
-import { submitScore } from '../services/scoreService.js'
+import { candidateFinals, judgeScoresGrouped, myJudgeScores } from '../services/scoreboardService.js'
+import { submitScore, submitScoresBatch } from '../services/scoreService.js'
 
 function categoryParam(params: unknown): CategoryKey {
   const value = String((params as { category?: string })?.category ?? '')
@@ -24,24 +24,9 @@ export const scoreRoutes: FastifyPluginAsync = async (app) => {
     data: CATEGORY_KEYS.map((key) => ({
       key,
       label: CATEGORIES[key].label,
-      preliminary: CATEGORIES[key].preliminary,
       criteria: CATEGORIES[key].criteria.map((c) => ({ key: c.bodyKey, max: c.max })),
     })),
   }))
-
-  // GET /api/scores/top-five/candidates → the 5 best male + 5 best female by preliminary standing
-  //   (judges need this to score the finals; admins to review)
-  app.get('/scores/top-five/candidates', { preHandler: [authenticate] }, async () => {
-    const data = await topFiveCandidates(5)
-    return { status: 200, message: 'Top 5 candidates fetched successfully.', data }
-  })
-
-  // GET /api/scores/overall[?gender=] → every candidate's preliminary standing (admin)
-  app.get('/scores/overall', { preHandler: [requireRole('admin')] }, async (request) => {
-    const { gender } = validate(genderQuerySchema, request.query)
-    const data = await overallStandings(gender)
-    return { status: 200, message: 'Overall standings fetched successfully.', data }
-  })
 
   // POST /api/scores/:category  { cand_id, ...criteria }  (judge)
   //   → 200 { status, message, score_id, total_score, has_submitted }
@@ -51,6 +36,25 @@ export const scoreRoutes: FastifyPluginAsync = async (app) => {
     const result = await submitScore(category, request.user!, request.body)
     logActivity(request, 'score.submit', `${category} cand_id=${(request.body as { cand_id?: unknown })?.cand_id} total=${result.total_score}`)
     return result
+  })
+
+  // POST /api/scores/:category/batch  [{ cand_id, ...criteria }, ...]  (judge)
+  //   → 200 { status, message, results, has_submitted } — atomic: all rows inserted and
+  //     has_submitted set in one transaction, or nothing is written.
+  //   → 404 unknown category/candidate · 422 invalid value or already scored (rolls back everything)
+  app.post('/scores/:category/batch', { preHandler: [authenticate] }, async (request) => {
+    const category = categoryParam(request.params)
+    const result = await submitScoresBatch(category, request.user!, request.body)
+    logActivity(request, 'score.submit_batch', `${category} count=${result.results.length}`)
+    return result
+  })
+
+  // GET /api/scores/:category/mine[?gender=] → { data: rows[] } — the current user's own submitted rows
+  app.get('/scores/:category/mine', { preHandler: [authenticate] }, async (request) => {
+    const category = categoryParam(request.params)
+    const { gender } = validate(genderQuerySchema, request.query)
+    const data = await myJudgeScores(category, request.user!.id, gender)
+    return { status: 200, message: `${CATEGORIES[category].label} scores fetched successfully.`, data }
   })
 
   // GET /api/scores/:category/judges[?gender=] → { data: { "<judge_id>": rows[] } } (admin)

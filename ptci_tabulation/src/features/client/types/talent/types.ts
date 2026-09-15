@@ -13,7 +13,7 @@ export type CandidatesDataTalentFeat = {
     created_at: string
 }
 export type GenderOptions = "male" | "female" | "other";
-export type CandidateTeamOptions = "red" | "yellow" | "green" | "purple" | "blue"
+export type CandidateTeamOptions = "black" | "white" | "purple" | "green" | "red"
 
 
 export type TalentFeatErrorResponse = {
@@ -29,4 +29,30 @@ export type CreateTalentScoreParams = {
     performance_choreography: number,
     overall_impression: number,
     audience_impact: number
+}
+
+export type CreateTalentScoreBatchResponse = TalentFeatErrorResponse & {
+    results: { cand_id: number, score_id: number, total_score: string }[],
+    has_submitted: boolean
+}
+
+export type MyTalentScoreDTO = {
+    score_id: string,
+    cand_id: string,
+    cand_number: string,
+    cand_name: string,
+    cand_team: CandidateTeamOptions,
+    cand_gender: GenderOptions,
+    judge_id: string,
+    mastery: string,
+    performance_choreography: string,
+    overall_impression: string,
+    audience_impact: string,
+    total_score: string
+}
+
+export type GetMyTalentScoresResponse = {
+    status: number,
+    message: string,
+    data: MyTalentScoreDTO[]
 }

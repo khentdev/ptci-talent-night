@@ -1,8 +1,10 @@
 import { z } from 'zod'
+import { withTransaction } from '../db/pool.js'
 import { forbidden, notFound, unprocessable } from '../lib/httpError.js'
 import { validate } from '../lib/validate.js'
 import { findContestantById } from '../repositories/contestantRepository.js'
 import { insertScore } from '../repositories/scoreRepository.js'
+import { setHasSubmitted } from '../repositories/userRepository.js'
 import { CATEGORIES, type CategoryConfig, type CategoryKey } from '../scoring/categories.js'
 import type { UserRecord } from '../types/index.js'
 
@@ -78,5 +80,59 @@ export async function submitScore(category: CategoryKey, judge: UserRecord, body
     score_id: inserted,
     total_score: total.toFixed(2),
     has_submitted: judge.hasSubmitted,
+  }
+}
+
+const scoreBatchBodySchema = (cat: CategoryConfig) => z.array(scoreBodySchema(cat)).min(1, 'At least one score is required')
+
+export type BatchSubmitScoreResult = {
+  status: number
+  message: string
+  results: { cand_id: number; score_id: number; total_score: string }[]
+  has_submitted: boolean
+}
+
+/**
+ * Validate and persist a judge's scores for every candidate in one shot. Atomic: all rows
+ * are inserted and `has_submitted` is set in a single DB transaction, or nothing is written.
+ * 403 wrong role · 404 unknown candidate · 422 invalid values or duplicate (rolls back everything).
+ */
+export async function submitScoresBatch(category: CategoryKey, judge: UserRecord, body: unknown): Promise<BatchSubmitScoreResult> {
+  const cat = CATEGORIES[category]
+  if (!cat.submitRoles.includes(judge.role)) throw forbidden('Only judges can submit scores.')
+
+  const items = validate(scoreBatchBodySchema(cat), body) as Record<string, number>[]
+
+  const results = await withTransaction(async (conn) => {
+    const out: { cand_id: number; score_id: number; total_score: string }[] = []
+    for (const input of items) {
+      const candId = input.cand_id as number
+      const contestant = await findContestantById(candId)
+      if (!contestant) throw notFound('Contestant not found.')
+
+      const values: Record<string, number> = {}
+      let total = 0
+      for (const c of cat.criteria) {
+        const v = round2(input[c.bodyKey] ?? 0)
+        values[c.column] = v
+        total += v
+      }
+      total = round2(total)
+
+      const inserted = await insertScore({ category, judgeId: judge.id, candId, values, total }, conn)
+      if (inserted === 'duplicate') {
+        throw unprocessable(`You have already submitted a ${cat.label} score for candidate #${contestant.candNumber}.`)
+      }
+      out.push({ cand_id: candId, score_id: inserted, total_score: total.toFixed(2) })
+    }
+    await setHasSubmitted(judge.id, true, conn)
+    return out
+  })
+
+  return {
+    status: 200,
+    message: `${cat.label} scores submitted successfully.`,
+    results,
+    has_submitted: true,
   }
 }

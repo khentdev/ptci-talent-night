@@ -24,9 +24,33 @@ function arg(name: string): string | undefined {
   return process.argv.includes(`--${name}`) ? 'true' : undefined
 }
 
-const TEAMS: Team[] = ['red', 'yellow', 'green', 'purple', 'blue']
-const SAMPLE_MALES = ['Juan Dela Cruz', 'Miguel Santos', 'Carlo Reyes', 'Paolo Garcia', 'Rafael Mendoza', 'Gabriel Torres', 'Marco Villanueva', 'Enzo Bautista', 'Andres Ramos', 'Luis Fernandez']
-const SAMPLE_FEMALES = ['Maria Clara', 'Andrea Santos', 'Bianca Reyes', 'Sofia Garcia', 'Isabella Mendoza', 'Angela Torres', 'Camille Villanueva', 'Nicole Bautista', 'Patricia Ramos', 'Katrina Fernandez']
+type SampleContestant = { name: string; team: Team }
+
+// Official candidates in number order (No. 1 first). Names use the "Last, First" format the admin form writes.
+const SAMPLE_MALES: SampleContestant[] = [
+  { name: 'Alangilan, Louie', team: 'black' },
+  { name: 'Senador, David Imanuel', team: 'white' },
+  { name: 'Paniza, Rey Eldrine', team: 'white' },
+  { name: 'Nuhay, Froilan', team: 'purple' },
+  { name: 'Ramiso, Gabriel', team: 'green' },
+  { name: 'Miguel, John Israel', team: 'red' },
+  { name: 'Lopez, John Caleb', team: 'green' },
+  { name: 'Rubia, Jade Azryll', team: 'purple' },
+  { name: 'Cañete, Kiann Jay', team: 'black' },
+  { name: 'Chan, Ralph Louie', team: 'red' },
+]
+const SAMPLE_FEMALES: SampleContestant[] = [
+  { name: 'Ferrer, Venus Nicole', team: 'black' },
+  { name: 'Vergara, Laarni', team: 'white' },
+  { name: 'Cabuenas, Jade', team: 'white' },
+  { name: 'Susing, Princess Jamaica', team: 'purple' },
+  { name: 'Orca, Rhean Faith', team: 'green' },
+  { name: 'Samonte, Carmela', team: 'red' },
+  { name: 'Felipe, Jean Ryaen', team: 'green' },
+  { name: 'Panagsagan, Althea', team: 'purple' },
+  { name: 'Sena, Yashira Coleen', team: 'black' },
+  { name: 'Bernardo, Alleria', team: 'red' },
+]
 
 async function ensureUser(username: string, password: string, role: 'admin' | 'judge'): Promise<'created' | 'exists'> {
   if (await findUserByUsername(username)) return 'exists'
@@ -37,9 +61,9 @@ async function ensureUser(username: string, password: string, role: 'admin' | 'j
 async function seedSampleContestants(): Promise<number> {
   if ((await countContestants()) > 0) return 0
   let n = 0
-  const insert = async (names: string[], gender: Gender) => {
-    for (let i = 0; i < names.length; i++) {
-      await createContestant({ candNumber: String(i + 1), candName: names[i]!, candTeam: TEAMS[i % TEAMS.length]!, candGender: gender })
+  const insert = async (contestants: SampleContestant[], gender: Gender) => {
+    for (const [i, { name, team }] of contestants.entries()) {
+      await createContestant({ candNumber: String(i + 1), candName: name, candTeam: team, candGender: gender })
       n++
     }
   }
@@ -48,7 +72,8 @@ async function seedSampleContestants(): Promise<number> {
   return n
 }
 
-async function main(): Promise<void> {
+/** Also called by `npm run db:reset -- --seed` (reads the same flags from process.argv). */
+export async function seedDatabase(): Promise<void> {
   await initDatabaseSchema()
 
   // ---- admin ----
@@ -88,10 +113,13 @@ async function main(): Promise<void> {
   }
 }
 
-main()
-  .then(() => closePool())
-  .catch(async (err) => {
-    console.error('Seed failed:', err instanceof Error ? err.message : err)
-    await closePool()
-    process.exit(1)
-  })
+const invokedDirectly = process.argv[1]?.replace(/\\/g, '/').endsWith('/src/db/seed.ts')
+if (invokedDirectly) {
+  seedDatabase()
+    .then(() => closePool())
+    .catch(async (err) => {
+      console.error('Seed failed:', err instanceof Error ? err.message : err)
+      await closePool()
+      process.exit(1)
+    })
+}

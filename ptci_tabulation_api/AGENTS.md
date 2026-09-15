@@ -1,6 +1,6 @@
 # IC2 Tabulation API — Agent Context
 
-**Purpose:** Backend for the IC2 pageant tabulation system. Judges submit per-category scores from the Vue frontend; admins manage contestants/accounts and read scoreboards.
+**Purpose:** Backend for the IC2 Talent Night tabulation system. Judges submit talent scores from the Vue frontend; admins manage contestants/accounts and read scoreboards.
 
 **Related repo:** `ic2-tabulation-frontend` (Vue 3 + Pinia + TanStack Query). It talks to this API only, with `axios { withCredentials: true }` and `VITE_API_URL=<origin>/api`. Its DTOs (`src/features/**/types`) are the contract — ids and decimals are strings there.
 
@@ -21,7 +21,7 @@
 
 auth: `POST login` · `POST check-session` · `GET me` · `POST logout` · `PUT has-submitted`
 contestants: `GET /` · `POST /` · `PUT /:id` · `DELETE /:id`
-scores: `POST /:category` · `GET /:category/judges` · `GET /:category/final` · `GET /overall` · `GET /top-five/candidates` · `GET /categories`
+scores: `POST /:category` · `GET /:category/judges` · `GET /:category/final` · `GET /categories` (only category: `talent`)
 users (admin): `GET /` · `POST /` · `PUT /:id/password` · `PUT /:id/reset-submission` · `DELETE /:id`
 activity-logs (admin): `GET /`
 `GET /health` (no prefix)

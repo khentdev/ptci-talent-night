@@ -29,7 +29,6 @@ export const useAuthStore = defineStore("auth", () => {
     const clearLoginErrors = () => Object.keys(loginErrors).forEach(key => loginErrors[key as keyof typeof loginErrors] = "")
 
     const userMetaData = ref<UserData | null>(null)
-    const rulesAgreed = ref<boolean>(false)
 
     const setUserMetaData = ({ id, role, username, has_submitted }: UserData) => {
         userMetaData.value = {
@@ -58,20 +57,6 @@ export const useAuthStore = defineStore("auth", () => {
     }
 
 
-    const setRulesAgreed = (agreed: boolean) => {
-        // I'll handle the API endpoint for agreement here
-        // 
-        rulesAgreed.value = agreed
-        localStorage.setItem('rulesAgreed', agreed.toString())
-    }
-
-    const initializeRulesAgreement = () => {
-        const stored = localStorage.getItem('rulesAgreed')
-        if (stored !== null) {
-            rulesAgreed.value = stored === 'true'
-        }
-    }
-
     const capitalizedUsername = computed(() => {
         if (getUserMetaData.value)
             return CapitalizeLabel(getUserMetaData?.value?.username);
@@ -85,8 +70,6 @@ export const useAuthStore = defineStore("auth", () => {
     const clearSession = () => {
         userMetaData.value = null
         setLogin.value = null
-        rulesAgreed.value = false
-        localStorage.removeItem('rulesAgreed')
     }
     const getUserMetaData = computed(() => userMetaData.value)
 
@@ -207,9 +190,6 @@ export const useAuthStore = defineStore("auth", () => {
         capitalizedRole: readonly(capitalizedRole),
         refreshSession,
         isLoggedIn,
-        rulesAgreed: readonly(rulesAgreed),
-        setRulesAgreed,
-        initializeRulesAgreement,
         setUserHasSubmitted, setUserMetaDataAfterScoreSubmit
     }
 })

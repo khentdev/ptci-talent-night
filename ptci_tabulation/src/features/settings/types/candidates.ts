@@ -44,4 +44,4 @@ export type CandidateFormErrors = {
 }
 
 export type GenderOptions = "male" | "female" | "other";
-export type CandidateTeamOptions = "red" | "yellow" | "green" | "purple" | "blue"
+export type CandidateTeamOptions = "black" | "white" | "purple" | "green" | "red"

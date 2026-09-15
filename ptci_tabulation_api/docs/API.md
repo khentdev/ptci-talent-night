@@ -44,42 +44,33 @@ Every error is:
 | DELETE | `/contestants/:id` | admin | → `{ status:"success", message }` (scores cascade) |
 
 `Contestant = { cand_id, cand_number, cand_name, cand_team, cand_gender, created_at }`
-Teams: `red | yellow | green | purple | blue`. Gender: `male | female | other`.
+Teams: `black | white | purple | green | red` (Black Stallion, White Wolves, Purple Hawk, Green Dragon, Red Vipers). Gender: `male | female | other`.
 `(cand_gender, cand_number)` must be unique.
 
 ## Scores
 
-Category keys: `production · uniform · swimwear · formalwear · qna · talent · top-five`
+Category keys: `talent`
 (`GET /scores/categories` returns the criteria and maxima).
 
 | Method | Path | Role | Body → Response |
 |--------|------|------|-----------------|
-| POST | `/scores/:category` | judge | `{ cand_id, ...criteria }` → `{ status:200, message, score_id, total_score, has_submitted }` (`has_submitted` is reported, never changed here — only `PUT /auth/has-submitted` sets it) |
+| POST | `/scores/:category` | judge | `{ cand_id, ...criteria }` → `{ status:200, message, score_id, total_score, has_submitted }` (`has_submitted` is reported, never changed here — only `PUT /auth/has-submitted` and the batch endpoint below set it) |
+| POST | `/scores/:category/batch` | judge | `[{ cand_id, ...criteria }, ...]` → `{ status:200, message, results:[{ cand_id, score_id, total_score }], has_submitted:true }` — atomic: every row is inserted and `has_submitted` set in one transaction, or nothing is written |
+| GET | `/scores/:category/mine[?gender=]` | any | → `{ data: JudgeScore[] }` — the current user's own submitted rows |
 | GET | `/scores/:category/judges[?gender=]` | admin | → `{ data: { "<judge_id>": JudgeScore[] } }` |
 | GET | `/scores/:category/final[?gender=]` | admin | → `{ data: CandidateFinal[] }` best first |
-| GET | `/scores/overall[?gender=]` | admin | → `{ data: Overall[] }` |
-| GET | `/scores/top-five/candidates` | any | → `{ data: Overall[] }` 5 best male + 5 best female |
 | GET | `/scores/categories` | any | → criteria config |
 
 Criteria per category (each value `0..max`, ≤ 2 decimals; strings like `"8.5"` are accepted):
 
 ```
-production : choreography 40, projection 40, audience_impact 20
-uniform    : poise_and_bearings 40, personality_and_projection 30, neatness 20, overall_impact 10
-swimwear   : stage_presence 40, figure_and_fitness 30, poise_and_bearing 20, overall_impact 10
-formalwear : poise_and_bearing 40, "personality/projection" 30, "appropriateness/ellegance" 20, overall_impact 10
-qna        : total_score 100
 talent     : mastery 30, performance_choreography 40, overall_impression 20, audience_impact 10
-top-five   : qna 50, beauty 50
 ```
 
 `JudgeScore = { score_id, judge_id, judge_name, cand_id, cand_number, cand_name, cand_team, cand_gender, <criteria...>, total_score, created_at }`
 
 `CandidateFinal = { score_id, cand_id, cand_number, cand_name, cand_team, cand_gender, <criteria averages...>, total_score, final_score, <category>_final_score, judges_count, created_at, updated_at }`
 — e.g. the talent endpoint includes `talent_final_score` (what `OverallScoreDataTable` reads).
-
-`Overall = { cand_id, cand_number, cand_name, cand_team, cand_gender, total_score, categories_scored, categories: { production, uniform, swimwear, formalwear, qna, talent } }`
-— `total_score` is the sum of the six preliminary averages (max 600).
 
 ## Accounts (admin)
 
@@ -98,7 +89,7 @@ Usernames: 3–64 chars, `a-z 0-9 . _ -`, stored lowercase. Passwords: min 8 cha
 ## Activity logs (admin)
 
 `GET /activity-logs[?limit=200]` → `{ data: [{ id, userId, username, action, details, ip, createdAt }] }`
-Actions: `auth.login`, `auth.logout`, `auth.has_submitted`, `score.submit`, `contestant.create|update|delete`, `user.create|reset_password|reset_submission|activate|deactivate|delete`.
+Actions: `auth.login`, `auth.logout`, `auth.has_submitted`, `score.submit`, `score.submit_batch`, `contestant.create|update|delete`, `user.create|reset_password|reset_submission|activate|deactivate|delete`.
 
 ## Health
 

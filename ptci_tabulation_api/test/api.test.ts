@@ -171,7 +171,7 @@ section('contestants')
   const anon = await call('GET', '/api/contestants')
   check('anonymous list → 401', () => assert.equal(anon.status, 401))
 
-  const teams = ['red', 'yellow', 'green', 'purple', 'blue']
+  const teams = ['black', 'white', 'purple', 'green', 'red']
   for (let i = 1; i <= 6; i++) {
     const m = await call('POST', '/api/contestants', { cookie: admin, body: { cand_number: String(i), cand_name: `Male ${i}`, cand_team: teams[i % 5], cand_gender: 'male' } })
     const f = await call('POST', '/api/contestants', { cookie: admin, body: { cand_number: String(i), cand_name: `Female ${i}`, cand_team: teams[i % 5], cand_gender: 'female' } })
@@ -198,13 +198,13 @@ section('contestants')
   check('list ?gender=female → 6', () => assert.equal(females.body.data.length, 6))
 
   const target = list.body.data.find((c: Json) => c.cand_name === 'Male 6')
-  const upd = await call('PUT', `/api/contestants/${target.cand_id}`, { cookie: admin, body: { cand_number: '6', cand_name: 'Male Six', cand_team: 'blue', cand_gender: 'male' } })
+  const upd = await call('PUT', `/api/contestants/${target.cand_id}`, { cookie: admin, body: { cand_number: '6', cand_name: 'Male Six', cand_team: 'white', cand_gender: 'male' } })
   check('update → success + data', () => {
     assert.equal(upd.status, 200)
     assert.equal(upd.body.status, 'success')
     assert.equal(upd.body.data.cand_name, 'Male Six')
   })
-  const upd404 = await call('PUT', '/api/contestants/9999', { cookie: admin, body: { cand_number: '6', cand_name: 'Male Six', cand_team: 'blue', cand_gender: 'male' } })
+  const upd404 = await call('PUT', '/api/contestants/9999', { cookie: admin, body: { cand_number: '6', cand_name: 'Male Six', cand_team: 'white', cand_gender: 'male' } })
   check('update unknown → 404', () => assert.equal(upd404.status, 404))
   const del = await call('DELETE', `/api/contestants/${target.cand_id}`, { cookie: admin })
   check('delete → success', () => assert.equal(del.body.status, 'success'))
@@ -238,6 +238,8 @@ const scaledBody = (key: string, candId: string, factor: number): Json => {
 
   const unknownCat = await call('POST', '/api/scores/dance', { cookie: j1, body: { cand_id: 1 } })
   check('unknown category → 404', () => assert.equal(unknownCat.status, 404))
+  const removedCat = await call('POST', '/api/scores/production', { cookie: j1, body: { cand_id: 1 } })
+  check('removed pageant category → 404', () => assert.equal(removedCat.status, 404))
 
   const over = await call('POST', '/api/scores/talent', { cookie: j1, body: { ...maxBody('talent', males[0].cand_id), mastery: 31 } })
   check('criterion above max → 422 naming the field', () => {
@@ -265,7 +267,7 @@ const scaledBody = (key: string, candId: string, factor: number): Json => {
     }
     check(`judge1 submits ${key} for all candidates → 200, total_score "100.00"`, () => assert.ok(ok))
   }
-  const dupe = await call('POST', '/api/scores/production', { cookie: j1, body: maxBody('production', males[0].cand_id) })
+  const dupe = await call('POST', '/api/scores/talent', { cookie: j1, body: maxBody('talent', males[0].cand_id) })
   check('duplicate submission → 422', () => {
     assert.equal(dupe.status, 422)
     assert.match(String(dupe.body.message), /already/i)
@@ -336,43 +338,22 @@ section('scoreboards')
   const finalF = await call('GET', '/api/scores/talent/final?gender=female', { cookie: admin })
   check('talent final female → 100.00 from one judge', () => assert.equal(finalF.body.data[0].total_score, '100.00'))
 
-  const uniform = await call('GET', '/api/scores/uniform/final', { cookie: admin })
-  check('uniform final (no gender) → 11 rows with criteria + total', () => {
-    assert.equal(uniform.body.data.length, 11)
-    const m = uniform.body.data.find((r: Json) => r.cand_gender === 'male')
-    assert.equal(m.poise_and_bearings, '30.00')
+  const finalAll = await call('GET', '/api/scores/talent/final', { cookie: admin })
+  check('talent final (no gender) → 11 rows with criteria + total', () => {
+    assert.equal(finalAll.body.data.length, 11)
+    const m = finalAll.body.data.find((r: Json) => r.cand_gender === 'male')
+    assert.equal(m.mastery, '22.50')
     assert.equal(m.total_score, '75.00')
-    assert.equal(m.uniform_final_score, '75.00')
+    assert.equal(m.talent_final_score, '75.00')
   })
 
-  const badGender = await call('GET', '/api/scores/uniform/final?gender=alien', { cookie: admin })
+  const badGender = await call('GET', '/api/scores/talent/final?gender=alien', { cookie: admin })
   check('invalid gender query → 422', () => assert.equal(badGender.status, 422))
 
-  const overall = await call('GET', '/api/scores/overall?gender=male', { cookie: admin })
-  check('overall male → 5 rows, total = sum of 6 category averages (450.00)', () => {
-    assert.equal(overall.body.data.length, 5)
-    const r = overall.body.data[0]
-    assert.equal(r.total_score, '450.00')
-    assert.equal(r.categories_scored, 6)
-    assert.equal(r.categories.talent, '75.00')
-    assert.equal(Object.keys(r.categories).length, 6)
-  })
-
-  const top5 = await call('GET', '/api/scores/top-five/candidates', { cookie: j1 })
-  check('top-five candidates (judge can read) → 5 male + 5 female, best first', () => {
-    assert.equal(top5.status, 200)
-    const m = top5.body.data.filter((r: Json) => r.cand_gender === 'male')
-    const f = top5.body.data.filter((r: Json) => r.cand_gender === 'female')
-    assert.equal(m.length, 5)
-    assert.equal(f.length, 5)
-    assert.equal(f[0].total_score, '600.00')
-    assert.equal(m[0].total_score, '450.00')
-    assert.equal(typeof m[0].cand_id, 'string')
-  })
-
   const cats = await call('GET', '/api/scores/categories', { cookie: j1 })
-  check('categories config → 7 categories, each summing to 100', () => {
-    assert.equal(cats.body.data.length, 7)
+  check('categories config → talent only, summing to 100', () => {
+    assert.equal(cats.body.data.length, 1)
+    assert.equal(cats.body.data[0].key, 'talent')
     for (const c of cats.body.data) assert.equal(c.criteria.reduce((a: number, x: Json) => a + x.max, 0), 100, c.key)
   })
 }
@@ -465,6 +446,59 @@ section('accounts & activity logs')
     for (const a of ['auth.login', 'score.submit', 'contestant.create', 'contestant.delete', 'user.create', 'user.delete', 'user.deactivate', 'user.reset_password']) assert.ok(actions.has(a), a)
     assert.ok(logs.body.data[0].createdAt)
   })
+}
+
+// =====================================================================
+section('batch score submissions & own scores')
+{
+  const created4 = await call('POST', '/api/users', { cookie: admin, body: { username: 'judge4', password: PASS, role: 'judge' } })
+  const j4 = (await call('POST', '/api/auth/login', { body: { username: 'judge4', password: PASS } })).cookie!
+
+  const mineEmpty = await call('GET', '/api/scores/talent/mine?gender=male', { cookie: j4 })
+  check('mine before any submission → empty array', () => {
+    assert.equal(mineEmpty.status, 200)
+    assert.deepEqual(mineEmpty.body.data, [])
+  })
+
+  const asAdminBatch = await call('POST', '/api/scores/talent/batch', { cookie: admin, body: males.map((c) => maxBody('talent', c.cand_id)) })
+  check('admin cannot submit batch scores → 403', () => assert.equal(asAdminBatch.status, 403))
+
+  const emptyBatch = await call('POST', '/api/scores/talent/batch', { cookie: j4, body: [] })
+  check('empty batch → 422', () => assert.equal(emptyBatch.status, 422))
+
+  const batchWithInternalDup = [...males.map((c) => maxBody('talent', c.cand_id)), maxBody('talent', males[0].cand_id)]
+  const rejected = await call('POST', '/api/scores/talent/batch', { cookie: j4, body: batchWithInternalDup })
+  check('batch with an internal duplicate cand_id → 422', () => assert.equal(rejected.status, 422))
+
+  const mineAfterRejected = await call('GET', '/api/scores/talent/mine?gender=male', { cookie: j4 })
+  check('rejected batch inserted nothing (transaction rolled back)', () => assert.equal(mineAfterRejected.body.data.length, 0))
+  const sessAfterRejected = await call('POST', '/api/auth/check-session', { cookie: j4 })
+  check('has_submitted stays false after a rejected batch', () => assert.equal(sessAfterRejected.body.user.has_submitted, false))
+
+  const cleanBatch = males.map((c) => maxBody('talent', c.cand_id))
+  const ok = await call('POST', '/api/scores/talent/batch', { cookie: j4, body: cleanBatch })
+  check('clean batch → 200, one result per candidate, has_submitted true', () => {
+    assert.equal(ok.status, 200)
+    assert.equal(ok.body.results.length, males.length)
+    assert.ok(ok.body.results.every((r: Json) => r.total_score === '100.00'))
+    assert.equal(ok.body.has_submitted, true)
+  })
+
+  const sessAfterOk = await call('POST', '/api/auth/check-session', { cookie: j4 })
+  check('has_submitted persisted after a successful batch', () => assert.equal(sessAfterOk.body.user.has_submitted, true))
+
+  const mineAfterOk = await call('GET', '/api/scores/talent/mine?gender=male', { cookie: j4 })
+  check("mine → exactly this judge's male rows, matching submitted candidates", () => {
+    assert.equal(mineAfterOk.body.data.length, males.length)
+    assert.deepEqual(new Set(mineAfterOk.body.data.map((r: Json) => r.cand_id)), new Set(males.map((c) => c.cand_id)))
+    assert.ok(mineAfterOk.body.data.every((r: Json) => r.total_score === '100.00'))
+  })
+
+  const mineFemaleEmpty = await call('GET', '/api/scores/talent/mine?gender=female', { cookie: j4 })
+  check('mine ?gender=female → empty (judge4 only scored males)', () => assert.equal(mineFemaleEmpty.body.data.length, 0))
+
+  const rebatch = await call('POST', '/api/scores/talent/batch', { cookie: j4, body: cleanBatch })
+  check('resubmitting the same batch → 422 (duplicate)', () => assert.equal(rebatch.status, 422))
 }
 
 // =====================================================================

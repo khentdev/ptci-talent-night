@@ -1,4 +1,5 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2'
+import type { Pool, PoolConnection } from 'mysql2/promise'
 import { getPool } from '../db/pool.js'
 import type { UserRecord, UserRole } from '../types/index.js'
 
@@ -66,8 +67,9 @@ export async function createUser(input: {
   return created
 }
 
-export async function setHasSubmitted(id: number, value: boolean): Promise<void> {
-  await getPool().execute('UPDATE users SET has_submitted = ? WHERE id = ?', [value ? 1 : 0, id])
+/** Pass a `PoolConnection` (from `withTransaction`) to make this update part of a larger transaction. */
+export async function setHasSubmitted(id: number, value: boolean, runner: Pool | PoolConnection = getPool()): Promise<void> {
+  await runner.execute('UPDATE users SET has_submitted = ? WHERE id = ?', [value ? 1 : 0, id])
 }
 
 /** Also stamps password_changed_at so every session issued before now becomes invalid. */

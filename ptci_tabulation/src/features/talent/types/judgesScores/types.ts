@@ -14,7 +14,7 @@ export type JudgesScores = {
     total_score: string;
 }
 
-export type CandidateTeamOptions = "red" | "yellow" | "green" | "purple" | "blue"
+export type CandidateTeamOptions = "black" | "white" | "purple" | "green" | "red"
 
 export type JudgesScoresData = {
     [judgeId: string]: JudgesScores[]

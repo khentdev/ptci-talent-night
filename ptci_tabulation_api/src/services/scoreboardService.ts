@@ -1,12 +1,11 @@
 import {
   aggregateByCandidate,
+  listJudgeOwnScores,
   listJudgeScores,
-  overallByCandidate,
   type CandidateAggregateRow,
   type JudgeScoreRow,
-  type OverallRow,
 } from '../repositories/scoreRepository.js'
-import { CATEGORIES, PRELIMINARY_CATEGORIES, type CategoryKey } from '../scoring/categories.js'
+import { CATEGORIES, type CategoryKey } from '../scoring/categories.js'
 import type { Gender, Team } from '../types/index.js'
 
 /*
@@ -52,6 +51,13 @@ export async function judgeScoresGrouped(category: CategoryKey, gender?: Gender)
     ;(grouped[dto.judge_id] ??= []).push(dto)
   }
   return grouped
+}
+
+/** One judge's own scores for a category (their rows only), gender-filterable. */
+export async function myJudgeScores(category: CategoryKey, judgeId: number, gender?: Gender): Promise<JudgeScoreDTO[]> {
+  const cat = CATEGORIES[category]
+  const rows = await listJudgeOwnScores(category, judgeId, gender)
+  return rows.map((r) => toJudgeScoreDTO(r, cat.criteria.map((c) => c.column)))
 }
 
 function toJudgeScoreDTO(r: JudgeScoreRow, columns: string[]): JudgeScoreDTO {
@@ -102,35 +108,4 @@ function toFinalDTO(r: CandidateAggregateRow, columns: string[], aliasKey: strin
   dto[aliasKey] = total
   for (const col of columns) dto[col] = dec(r[col])
   return dto
-}
-
-export type OverallDTO = CandidateFields & {
-  total_score: string
-  categories_scored: number
-  categories: Record<string, string>
-}
-
-function toOverallDTO(r: OverallRow): OverallDTO {
-  const categories: Record<string, string> = {}
-  for (const cat of PRELIMINARY_CATEGORIES) categories[cat.key] = dec(r[cat.key])
-  return {
-    ...candidateFields(r),
-    total_score: dec(r.total_score),
-    categories_scored: Number(r.categories_scored ?? 0),
-    categories,
-  }
-}
-
-/** Every candidate's preliminary standing (sum of judge-averaged category totals). */
-export async function overallStandings(gender?: Gender): Promise<OverallDTO[]> {
-  return (await overallByCandidate(gender)).map(toOverallDTO)
-}
-
-/** The five best male and five best female candidates by preliminary standing — the finals roster. */
-export async function topFiveCandidates(limit = 5): Promise<OverallDTO[]> {
-  const [males, females] = await Promise.all([
-    overallByCandidate('male', limit),
-    overallByCandidate('female', limit),
-  ])
-  return [...males, ...females].map(toOverallDTO)
 }

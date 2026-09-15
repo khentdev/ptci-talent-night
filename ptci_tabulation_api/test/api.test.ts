@@ -477,15 +477,15 @@ section('batch score submissions & own scores')
 
   const cleanBatch = males.map((c) => maxBody('talent', c.cand_id))
   const ok = await call('POST', '/api/scores/talent/batch', { cookie: j4, body: cleanBatch })
-  check('clean batch → 200, one result per candidate, has_submitted true', () => {
+  check('clean male batch → 200, one result per candidate, has_submitted still false', () => {
     assert.equal(ok.status, 200)
     assert.equal(ok.body.results.length, males.length)
     assert.ok(ok.body.results.every((r: Json) => r.total_score === '100.00'))
-    assert.equal(ok.body.has_submitted, true)
+    assert.equal(ok.body.has_submitted, false)
   })
 
   const sessAfterOk = await call('POST', '/api/auth/check-session', { cookie: j4 })
-  check('has_submitted persisted after a successful batch', () => assert.equal(sessAfterOk.body.user.has_submitted, true))
+  check('has_submitted stays false after only the male batch', () => assert.equal(sessAfterOk.body.user.has_submitted, false))
 
   const mineAfterOk = await call('GET', '/api/scores/talent/mine?gender=male', { cookie: j4 })
   check("mine → exactly this judge's male rows, matching submitted candidates", () => {
@@ -499,6 +499,15 @@ section('batch score submissions & own scores')
 
   const rebatch = await call('POST', '/api/scores/talent/batch', { cookie: j4, body: cleanBatch })
   check('resubmitting the same batch → 422 (duplicate)', () => assert.equal(rebatch.status, 422))
+
+  const femaleBatch = await call('POST', '/api/scores/talent/batch', { cookie: j4, body: females.map((c) => maxBody('talent', c.cand_id)) })
+  check('female batch after male batch → 200, has_submitted true', () => {
+    assert.equal(femaleBatch.status, 200)
+    assert.equal(femaleBatch.body.results.length, females.length)
+    assert.equal(femaleBatch.body.has_submitted, true)
+  })
+  const sessAfterBoth = await call('POST', '/api/auth/check-session', { cookie: j4 })
+  check('has_submitted persisted once both genders are submitted', () => assert.equal(sessAfterBoth.body.user.has_submitted, true))
 }
 
 // =====================================================================

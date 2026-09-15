@@ -144,3 +144,19 @@ export async function judgeHasScored(category: CategoryKey, judgeId: number): Pr
   )
   return rows.length > 0
 }
+
+/** Distinct candidate genders this judge has scored in the category. Pass a `PoolConnection` to see uncommitted rows. */
+export async function judgeScoredGenders(
+  category: CategoryKey,
+  judgeId: number,
+  runner: Pool | PoolConnection = getPool(),
+): Promise<Gender[]> {
+  const cat = CATEGORIES[category]
+  const [rows] = await runner.query<RowDataPacket[]>(
+    `SELECT DISTINCT c.cand_gender FROM ${cat.table} s
+     JOIN contestants c ON c.cand_id = s.cand_id
+     WHERE s.judge_id = ?`,
+    [judgeId],
+  )
+  return rows.map((r) => r.cand_gender as Gender)
+}

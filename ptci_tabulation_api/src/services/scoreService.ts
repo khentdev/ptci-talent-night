@@ -3,7 +3,7 @@ import { withTransaction } from '../db/pool.js'
 import { forbidden, notFound, unprocessable } from '../lib/httpError.js'
 import { validate } from '../lib/validate.js'
 import { findContestantById } from '../repositories/contestantRepository.js'
-import { insertScore } from '../repositories/scoreRepository.js'
+import { insertScore, judgeScoredGenders } from '../repositories/scoreRepository.js'
 import { setHasSubmitted } from '../repositories/userRepository.js'
 import { CATEGORIES, type CategoryConfig, type CategoryKey } from '../scoring/categories.js'
 import type { UserRecord } from '../types/index.js'
@@ -93,8 +93,9 @@ export type BatchSubmitScoreResult = {
 }
 
 /**
- * Validate and persist a judge's scores for every candidate in one shot. Atomic: all rows
- * are inserted and `has_submitted` is set in a single DB transaction, or nothing is written.
+ * Validate and persist a judge's scores for every candidate in one shot. Atomic: all rows are
+ * inserted in a single DB transaction, or nothing is written. `has_submitted` is set in that same
+ * transaction, but only once the judge has scored both male and female candidates.
  * 403 wrong role · 404 unknown candidate · 422 invalid values or duplicate (rolls back everything).
  */
 export async function submitScoresBatch(category: CategoryKey, judge: UserRecord, body: unknown): Promise<BatchSubmitScoreResult> {
@@ -125,14 +126,16 @@ export async function submitScoresBatch(category: CategoryKey, judge: UserRecord
       }
       out.push({ cand_id: candId, score_id: inserted, total_score: total.toFixed(2) })
     }
-    await setHasSubmitted(judge.id, true, conn)
-    return out
+    const genders = await judgeScoredGenders(category, judge.id, conn)
+    const completed = genders.includes('male') && genders.includes('female')
+    if (completed) await setHasSubmitted(judge.id, true, conn)
+    return { out, completed }
   })
 
   return {
     status: 200,
     message: `${cat.label} scores submitted successfully.`,
-    results,
-    has_submitted: true,
+    results: results.out,
+    has_submitted: results.completed || judge.hasSubmitted,
   }
 }

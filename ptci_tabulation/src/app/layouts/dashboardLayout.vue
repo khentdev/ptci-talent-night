@@ -77,11 +77,7 @@
         {
           label: "Manage Admin Accounts",
           routeName: "manage-admin-accounts",
-        },
-        {
-          label: "Activity Logs",
-          routeName: "activity-logs",
-        },
+        }
       ],
     },
   ];

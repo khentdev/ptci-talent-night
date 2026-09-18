@@ -11,6 +11,14 @@ import { clientRoutes } from "../../features/client/clientRoutes";
 
 import type { RouteRecordRaw } from "vue-router";
 
+declare module "vue-router" {
+  interface RouteMeta {
+    requiresAuth?: boolean;
+    /** Role required to enter. Enforced by the global guard below. */
+    role?: "admin" | "judge";
+  }
+}
+
 const routes: RouteRecordRaw[] = [
   {
     path: "",
@@ -34,14 +42,9 @@ const routes: RouteRecordRaw[] = [
   {
     path: "/dashboard",
     name: "dashboard",
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, role: "admin" },
     redirect: { name: "talent-judge-male" },
     component: () => import("../layouts/dashboardLayout.vue"),
-    beforeEnter: () => {
-      const authStore = useAuthStore();
-      if (!authStore.isLoggedIn || authStore.getUserMetaData?.role !== "admin")
-        return { name: "home-default" };
-    },
     children: [
       ...talentRoutes,
       ...settingsRoutes,
@@ -59,7 +62,7 @@ const routes: RouteRecordRaw[] = [
     name: "judge",
     component: () => import("../layouts/ClientLayout.vue"),
     redirect: { name: "judge-home" },
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, role: "judge" },
     children: [...clientRoutes],
   },
   {
@@ -72,24 +75,19 @@ export const router = createRouter({
   history: createWebHistory(),
   routes,
 });
-
-router.beforeEach(async (to, from, next) => {
-  console.log("Guard entry:", {
-    original: to.fullPath,
-    toName: to.name,
-    toPath: to.path,
-    fromName: from.name,
-  });
-
+router.beforeEach(async (to) => {
   const authStore = useAuthStore();
+  if (!to.matched.some((r) => r.meta.requiresAuth)) return true;
 
-  const requiresAuth = to.matched.some((r) => r.meta.requiresAuth);
-  if (!requiresAuth) return next();
-
-  if (requiresAuth && !authStore.loadingState.sessionInitialized) {
-    if (authStore.isLoggedIn) return next();
-    const res = await authStore.refreshSession();
-    if (!res.success && res.logout) return next({ name: "login" });
+  if (!authStore.loadingState.sessionInitialized) {
+    await authStore.refreshSession();
   }
-  return next();
+
+  const user = authStore.getUserMetaData;
+  if (!user) return { name: "login" };
+
+  const required = to.matched.find((r) => r.meta.role)?.meta.role;
+  if (required && user.role !== required) return { name: "home-default" };
+
+  return true;
 });

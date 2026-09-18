@@ -70,6 +70,7 @@ export const useAuthStore = defineStore("auth", () => {
     const clearSession = () => {
         userMetaData.value = null
         setLogin.value = null
+        loadingState.sessionInitialized = false
     }
     const getUserMetaData = computed(() => userMetaData.value)
 
